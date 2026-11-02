@@ -10,13 +10,21 @@ struct ItemDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Image(systemName: item.category.symbol).font(.system(size: 32)).foregroundStyle(.secondary)
                     Text(item.name).font(.title3.weight(.semibold)).textSelection(.enabled)
-                    LabeledContent("大小", value: formatBytes(item.bytes))
+                    LabeledContent("大小", value: item.measurementAvailable ? formatBytes(item.bytes) : "無法估算")
                     LabeledContent("檔案數", value: item.fileCount.formatted())
                     LabeledContent("分類", value: item.category.rawValue)
                     if let tool = item.aiToolName { LabeledContent("AI 工具", value: tool) }
+                    if let metadata = item.aiMetadata {
+                        LabeledContent("資料類型", value: metadata.kind.rawValue)
+                        if let note = metadata.note { Text(note).font(.caption).foregroundStyle(.secondary) }
+                    }
+                    if item.relatedItemCount > 0 {
+                        Text("另含 \(item.relatedItemCount) 個關聯目錄／檔案，整理時會一併處理。")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("最近修改").font(.caption).foregroundStyle(.secondary)
-                        Text(item.modified.formatted(date: .abbreviated, time: .shortened))
+                        Text(item.measurementAvailable ? item.modified.formatted(date: .abbreviated, time: .shortened) : "未取得")
                     }
                     Divider()
                     VStack(alignment: .leading, spacing: 8) {

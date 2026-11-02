@@ -11,3 +11,10 @@ import Testing
     #expect(AIProcessActivity.toolID(processName: "node", executablePath: "/opt/node/bin/node") == nil)
     #expect(AIProcessActivity.toolID(processName: "notes", executablePath: "/tmp/my-codex-assets/notes") == nil)
 }
+
+@Test func nativeVersionExecutableStillIdentifiesClaude() {
+    #expect(AIProcessActivity.toolID(processName: "2.1.218",
+        executablePath: "/tmp/test-home/.local/share/claude/versions/2.1.218") == "claude")
+    #expect(AIProcessActivity.toolID(processName: "2.1.218",
+        executablePath: "/tmp/test-home/share/claude/versions/2.1.218") == nil)
+}

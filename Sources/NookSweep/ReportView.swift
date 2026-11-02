@@ -14,8 +14,20 @@ struct ReportView: View {
                 Text("已將 \(report.moved.count) 項（\(formatBytes(report.bytes))）移到垃圾桶。")
                 Text("資料仍可從垃圾桶取回。只有清空垃圾桶後，磁碟空間才會實際釋放。")
                     .foregroundStyle(.secondary)
+                if report.moved.contains(where: { !$0.relatedMoves.isEmpty }) {
+                    Text("包含關聯資料，還原時須將各個項目放回原路徑。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button("複製完整還原路徑") {
+                        let paths = report.moved.flatMap { item in
+                            ["\(item.trashURL.path) → \(item.originalURL.path)"] +
+                                item.relatedMoves.map { "\($0.trashURL.path) → \($0.originalURL.path)" }
+                        }
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(paths.joined(separator: "\n"), forType: .string)
+                    }
+                }
                 if !report.failures.isEmpty {
-                    Text("以下項目已保留：").fontWeight(.medium)
+                    Text("未完整完成的項目：").fontWeight(.medium)
                     ScrollView {
                         Text(report.failures.joined(separator: "\n\n"))
                             .font(.caption).textSelection(.enabled)

@@ -63,7 +63,7 @@ struct ResultsView: View {
                         }
                     }.width(min: 160, ideal: 300)
                     TableColumn("大小") { item in
-                        Text(formatBytes(item.bytes)).monospacedDigit()
+                        Text(item.measurementAvailable ? formatBytes(item.bytes) : "—").monospacedDigit()
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }.width(90)
                     TableColumn("最近修改") { item in

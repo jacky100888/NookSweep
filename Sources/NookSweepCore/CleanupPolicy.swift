@@ -18,10 +18,12 @@ extension CleanupEngine {
         ].map { ScanRoot(url: home.appendingPathComponent($0.0), category: $0.1) }
     }
 
-    func validatedRoot(for url: URL) throws -> ScanRoot {
+    func validatedRoot(for url: URL, knownEntry: AICatalogEntry? = nil) throws -> ScanRoot {
         let path = url.standardizedFileURL
+        let entry = try knownEntry ?? catalogEntry(for: url)
         // macOS 的 /var 與 /private/var 會正規化成同一路徑，須比較正規化後的實體位置。
-        guard let root = (roots + aiCacheRoots).first(where: {
+        guard let root = entry.map({ ScanRoot(url: $0.url.deletingLastPathComponent(), category: $0.category) }) ??
+            (roots + aiCacheRoots).first(where: {
             $0.url.path == path.deletingLastPathComponent().path
         }) ?? aiHistoryRoot(for: url),
               url.resolvingSymlinksInPath().standardizedFileURL.path == path.path,
@@ -31,21 +33,24 @@ extension CleanupEngine {
         if root.category == .caches, aiToolIdentifier(for: path) != nil {
             return ScanRoot(url: root.url, category: .aiCaches)
         }
-        if root.category == .aiCaches, try !acceptsAICacheFile(path, root: root.url) {
+        if entry == nil, root.category == .aiCaches, try !acceptsAICacheFile(path, root: root.url) {
             throw CleanupError.refused("非已知的 AI 暫存格式，保留原狀")
         }
         return root
     }
 
     func state(for url: URL, category: CleanupCategory, bytes: Int64, modified: Date,
-               runningBundleIDs: Set<String>, runningAITools: Set<String> = []) throws -> ItemState {
+               runningBundleIDs: Set<String>, runningAITools: Set<String> = [],
+               knownEntry: AICatalogEntry? = nil) throws -> ItemState {
         let name = url.lastPathComponent.lowercased()
-        if let tool = aiToolIdentifier(for: url) {
+        let entry = try knownEntry ?? catalogEntry(for: url)
+        if let reason = entry?.preservationReason { return .blocked(reason) }
+        if let tool = entry?.metadata.toolID ?? aiToolIdentifier(for: url) {
             if category == .aiHistory, tool == "codex" {
                 return .blocked("Codex 對話受資料庫索引管理，請在 Codex 中管理對話")
             }
             if runningAITools.contains(tool) { return .running }
-            if let reason = try aiContentBlockReason(url) { return .blocked(reason) }
+            if category != .aiWorktrees, let reason = try aiContentBlockReason(url) { return .blocked(reason) }
         }
         if [".gitignore", ".ds_store", "cachedir.tag", "lock"].contains(name) ||
             name.hasSuffix(".lock") || name.hasSuffix(".lck") {

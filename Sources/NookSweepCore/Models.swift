@@ -6,9 +6,12 @@ public enum CleanupCategory: String, CaseIterable, Identifiable, Sendable {
     case developer = "開發工具快取"
     case aiCaches = "AI 工具快取"
     case aiHistory = "AI 舊對話"
+    case aiVersions = "AI 工具版本"
+    case aiWorktrees = "AI 工作副本"
 
     public var id: String { rawValue }
     public var minimumDays: Int { self == .logs || self == .aiHistory ? 30 : 7 }
+    public var isAI: Bool { [.aiCaches, .aiHistory, .aiVersions, .aiWorktrees].contains(self) }
     public var symbol: String {
         switch self {
         case .caches: "square.stack.3d.up"
@@ -16,6 +19,8 @@ public enum CleanupCategory: String, CaseIterable, Identifiable, Sendable {
         case .developer: "hammer"
         case .aiCaches: "sparkles"
         case .aiHistory: "bubble.left.and.bubble.right"
+        case .aiVersions: "shippingbox"
+        case .aiWorktrees: "arrow.triangle.branch"
         }
     }
 }
@@ -38,7 +43,7 @@ public enum ItemState: Equatable, Sendable {
 
 public struct CleanupItem: Identifiable, Sendable {
     public var id: String { url.path }
-    public var name: String { url.lastPathComponent }
+    public var name: String { aiMetadata?.title ?? url.lastPathComponent }
     public let url: URL
     public let category: CleanupCategory
     public let bytes: Int64
@@ -46,18 +51,38 @@ public struct CleanupItem: Identifiable, Sendable {
     public let modified: Date
     public let state: ItemState
     let fingerprint: String
+    public let aiMetadata: AIItemMetadata?
+    let relatedURLs: [URL]
+    public var relatedItemCount: Int { relatedURLs.count }
+    public var measurementAvailable: Bool { !fingerprint.isEmpty }
     public var isEligible: Bool { state == .eligible }
-    public var aiToolID: String? { aiToolIdentifier(for: url) }
+    public var aiToolID: String? { aiMetadata?.toolID ?? aiToolIdentifier(for: url) }
     public var aiToolName: String? {
         switch aiToolID {
         case "codex": "Codex"
         case "claude": "Claude"
         case "gemini": "Gemini"
         case "chatgpt": "ChatGPT"
+        case "cursor": "Cursor"
+        case "opencode": "opencode"
         default: nil
         }
     }
     public var isAIHistory: Bool { category == .aiHistory }
+
+    init(url: URL, category: CleanupCategory, bytes: Int64, fileCount: Int, modified: Date,
+         state: ItemState, fingerprint: String, aiMetadata: AIItemMetadata? = nil,
+         relatedURLs: [URL] = []) {
+        self.url = url
+        self.category = category
+        self.bytes = bytes
+        self.fileCount = fileCount
+        self.modified = modified
+        self.state = state
+        self.fingerprint = fingerprint
+        self.aiMetadata = aiMetadata
+        self.relatedURLs = relatedURLs
+    }
 }
 
 public struct ScanProgress: Sendable {
@@ -77,10 +102,24 @@ public struct ScanResult: Sendable {
     }
 }
 
+public struct CleanupMovedPath: Sendable {
+    public let originalURL: URL
+    public let trashURL: URL
+    public let bytes: Int64
+}
+
 public struct TrashedItem: Sendable {
     public let originalURL: URL
     public let trashURL: URL
     public let bytes: Int64
+    public let relatedMoves: [CleanupMovedPath]
+
+    init(originalURL: URL, trashURL: URL, bytes: Int64, relatedMoves: [CleanupMovedPath] = []) {
+        self.originalURL = originalURL
+        self.trashURL = trashURL
+        self.bytes = bytes
+        self.relatedMoves = relatedMoves
+    }
 }
 
 public struct CleanupReport: Sendable {
@@ -99,8 +138,11 @@ public enum CleanupError: LocalizedError {
 
 public actor CleanupEngine {
     let home: URL
-    public init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+    let activity: @Sendable () -> Set<String>
+    public init(home: URL = FileManager.default.homeDirectoryForCurrentUser,
+                activity: @escaping @Sendable () -> Set<String> = { AIProcessActivity.runningToolIDs() }) {
         self.home = home.standardizedFileURL
+        self.activity = activity
     }
 
 }

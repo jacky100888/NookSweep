@@ -8,7 +8,8 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 
 - 掃描應用程式快取、舊記錄檔、開發工具快取與明確列出的 AI 工具暫存。
 - 分類搜尋、查看大小與完整路徑、在 Finder 顯示、逐項選取與清理結果回報。
-- 選擇開啟舊 AI 對話掃描，與可重建的暫存分開呈現。
+- AI 工具整理依工具及資料類型分組，列出快取、工具版本、對話、本機歷史與工作副本，並顯示可整理／保留數量及原因。
+- 軟體移除可預覽 App 大小、版本與路徑，選擇只移除 App，或另外勾選可精確對應的相關資料。
 - 狀態頁與選單列面板：CPU 與每核心使用率、記憶體與壓力、磁碟可用量、網路速率、電池、開機時間及高記憶體程序。
 - 每 2 秒更新系統指標，可暫停、繼續、手動更新及查看短期趨勢。
 
@@ -20,12 +21,12 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 
 側欄「即時狀態」提供完整指標；選單列的波形圖示提供簡短面板。關閉主視窗後仍可從選單列查看、暫停監測、重新開啟主視窗或結束 App。
 
-1. 在側欄選「全部項目」，再按「開始掃描」。掃描只會讀取檔案，可隨時取消。
+1. 在側欄選「全部項目」或「AI 工具整理」，再按「開始掃描」。掃描只會讀取檔案，可隨時取消。
 2. 依分類或名稱篩選，點選項目查看完整路徑、大小、最近修改時間與保留原因。
 3. 先結束相關應用程式、AI CLI、建置與套件安裝工作，再勾選要清理的項目。
 4. 按「移到垃圾桶」並確認。App 會重新驗證路徑與狀態，再逐項回報成功或保留原因。
 
-預設不勾選任何項目。「選取」只勾選目前顯示的可整理項目；切換篩選後會保留已選項目，底部顯示完整選取總量。
+預設不勾選任何項目。「選取」只勾選目前顯示的可整理項目；切換篩選後會保留已選項目，底部顯示完整選取總量。對話與本機歷史仍會列出，但需先開啟「允許整理舊對話／歷史」才可選取；歷史與工作副本在操作前另行確認。「軟體移除」使用獨立的 App 預覽與確認流程。
 
 資料移到垃圾桶後仍占用磁碟；清空垃圾桶才會釋放空間。App 不會清空垃圾桶。需要取回時，請從垃圾桶將項目移回原路徑；若應用程式已產生同名資料，先結束它並確認要保留的版本。
 
@@ -36,22 +37,46 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 | 應用程式快取 | `~/Library/Caches` 的直接子項目 | 7 天 |
 | 舊記錄檔 | `~/Library/Logs` 的直接子項目 | 30 天 |
 | 開發工具快取 | Xcode DerivedData、npm、pip、uv、Gradle 的明確快取目錄 | 7 天 |
-| AI 工具暫存 | Codex、Claude、Gemini 的明確暫存與記錄目錄，以及已辨識的 App 快取 | 7 天 |
-| 舊 AI 對話 | 手動開啟後才掃描的已知對話檔案格式 | 30 天 |
+| AI 工具暫存 | Codex、Claude、Gemini 的明確暫存與記錄目錄，以及 Codex、Claude、Cursor、ChatGPT 等已辨識的 App 快取葉節點 | 7 天 |
+| 對話與本機歷史 | 已知對話檔案與 Cursor 本機歷史；預設列出並保留，開啟允許整理後才可選取 | 30 天 |
+| AI 工具版本 | 已確認早於目前使用版本的 Claude Code 版本檔 | 7 天 |
+| AI 工作副本 | 通過 Git 狀態、合併與登記驗證的 Codex linked worktree | 7 天 |
 
 開發工具路徑為 `~/Library/Developer/Xcode/DerivedData`、`~/.npm/_cacache`、`~/.cache/pip`、`~/.cache/uv`、`~/.gradle/caches`。
 
 AI 暫存包括 `~/.claude/debug`、`~/.claude/paste-cache`、`~/.claude/shell-snapshots`、`~/.codex/log`、`~/.codex/shell_snapshots` 與 `~/.gemini/logs`。這些目錄可能含提示文字或診斷資訊，清理前仍應查看項目。
 
-### AI 對話與暫存
+### AI 工具清單與歷史
 
-舊對話掃描預設關閉。開啟後只辨識已知路徑與檔名格式，不讀取對話內容：
+「AI 工具整理」在已知路徑內完整列出可辨識項目，依工具及資料類型分組；統計包含目前範圍的全部項目，搜尋與「只顯示可整理」只影響列表。無法量測的項目會明確標示。清單不代表整個磁碟的所有 AI 資料。
+
+App 快取只接受已確認的 `Cache`、`Code Cache`、`GPUCache` 與 Service Worker 快取等葉節點，包含已知 profile／partition 布局；不將整個 Application Support 視為快取。Codex 的 `~/.codex/cache` 與 `~/.codex/.tmp` 也依已知結構辨識，未知項目保留。
+
+歷史清單只辨識已知路徑、檔名及必要中繼資料，不讀取訊息或快照正文：
 
 - Claude CLI：專案目錄內的已知 JSONL 對話檔，以及已知結構的子代理紀錄；不搬移整個專案資料夾。
 - Gemini CLI：`~/.gemini/tmp/<project>/chats/session-*.json`。
-- Codex：可查看 sessions 與 archived sessions，但保留並禁止清理，請由 Codex 管理對話。直接移走檔案可能讓 SQLite 索引與對話內容失去一致性。
+- Codex：列出 sessions 與 archived sessions 的 `.jsonl`／`.jsonl.zst`，不解壓縮對話正文。紀錄受資料庫索引管理，全部保留並禁止清理，請由 Codex 管理。
+- Cursor：只列出 `~/Library/Application Support/Cursor/User/History/<hash>` 的本機歷史 record；每個 record 整組處理，必要時只讀 `entries.json` 取得原檔名，不影響工作區原始檔或聊天。
+- opencode：舊式 `storage/session/<project>/ses_*.json` 會連同對應的 message、part、session_diff 與 todo 分組。新版資料庫僅列出並保留；資料庫與舊紀錄並存、session 命名空間含連結、識別碼重複或布局未知時，舊紀錄也保留。
 
-舊對話不是可重建的快取，移除後可能失去聊天內容與接續工作的上下文。清理時需另外明確確認。設定、登入憑證、skills、rules、記憶、專案原始碼與 SQLite 主檔／WAL／SHM 均不在可清理範圍。
+舊對話與本機歷史無法重新產生，移除後可能失去聊天內容、接續工作的上下文或檔案快照。AI 整理不以設定、登入憑證、skills、rules、記憶、專案原始碼及 SQLite 主檔／WAL／SHM 作為清理目標。
+
+### AI 工具版本與工作副本
+
+Claude Code 版本清單只檢查 `~/.local/share/claude/versions`。必須能從目前啟動連結確認有效版本，且候選版本確實較舊，才可能整理；目前版本、無法辨識或無法比較的版本一律保留。
+
+Codex 工作副本限定 `~/.codex/worktrees/<id>/<repo>`。候選必須仍已登記、不是主工作副本、沒有鎖定或未完成的 Git 操作、沒有修改／未追蹤／已忽略檔案，且 HEAD 已合併至主儲存庫的 main／master。Git 實際工作目錄必須吻合，Git admin 必須與工作副本雙向對應；略過檢查的索引、submodule 或其他無法確認的狀態都會保留。檢查只執行唯讀 Git 指令，停用 hooks、fsmonitor 與 filter。
+
+整理工作副本時會連同其專屬 Git admin 目錄移到垃圾桶，不執行 prune 或永久移除。AI 關聯資料會量測整組指紋，搬移前重新核對關聯集合；途中失敗會嘗試將已移動項目放回原路徑。結果會列出需要手動還原的路徑。還原 linked worktree 時，必須將工作區與 Git admin 兩者都放回原位。
+
+### 軟體移除
+
+「軟體移除」掃描 `/Applications` 與 `~/Applications`，包含一層子資料夾中的 `.app`，顯示名稱、版本、大小、bundle ID 與路徑。Apple 系統 App、NookSweep 自身、執行中的 App，以及無法安全讀取或掃描後已改變的 App 不允許移除；不會替使用者結束 App 或要求管理員權限。
+
+預設只移除 App，所有相關資料均不勾選。可選填的相關資料限定個人 Library 下的快取、偏好設定、Application Support、Logs、Containers 與 Saved Application State，依 bundle ID 或精確名稱對應。可能共用、名稱含糊或無法確認專用的路徑會保留；不掃描整個使用者資料夾尋找殘留。
+
+相關資料可能包含設定、登入狀態、資料庫與使用者內容，勾選前請確認備份及完整路徑。確認後先移除 App，再逐項重新驗證並處理所選相關資料；App 移除失敗時保留相關資料，部分失敗會逐項回報。可從垃圾桶將 App 與資料放回原路徑。
 
 ### 保留規則
 
@@ -88,8 +113,8 @@ App 尚未經 Apple Developer ID 簽署或公證。下載的 App 可能受到 Ga
 
 ## 專案結構
 
-- `Sources/NookSweepCore`：清理政策、量測、AI 路徑辨識與系統指標取樣。
-- `Sources/NookSweep`：SwiftUI 主視窗、選單列、篩選與結果回報。
+- `Sources/NookSweepCore`：清理政策、整組量測與搬移、AI 分類、軟體移除與系統指標取樣。
+- `Sources/NookSweep`：SwiftUI 主視窗、AI 分組清單、軟體預覽、選單列、篩選與結果回報。
 - `Tests/NookSweepCoreTests`：清理邊界、狀態變動與系統指標計算測試。
 - `scripts`：測試、App 打包與圖示產生。
 

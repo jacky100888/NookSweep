@@ -6,7 +6,7 @@ import Testing
     let fixture = try Fixture()
     defer { try? fixture.dispose() }
     let file = try fixture.aiFile(".gemini/tmp/project/chats/session-old.json")
-    let engine = CleanupEngine(home: fixture.home)
+    let engine = CleanupEngine(home: fixture.home, activity: { [] })
     let scanned = try await engine.scan(includeAIHistory: true)
     let report = await engine.trash(scanned.items)
     #expect(report.moved.isEmpty)
@@ -19,7 +19,7 @@ import Testing
     defer { try? fixture.dispose() }
     let file = try fixture.aiFile(".gemini/tmp/project/chats/session-old.json")
     let memory = try fixture.aiFile(".gemini/tmp/project/memory.md")
-    let engine = CleanupEngine(home: fixture.home)
+    let engine = CleanupEngine(home: fixture.home, activity: { [] })
     let scanned = try await engine.scan(includeAIHistory: true)
     let report = await engine.trash(scanned.items, allowAIHistory: true)
     defer { for moved in report.moved { try? FileManager.default.removeItem(at: moved.trashURL) } }
@@ -33,7 +33,7 @@ import Testing
     let fixture = try Fixture()
     defer { try? fixture.dispose() }
     let file = try fixture.aiFile(".gemini/tmp/project/chats/session-old.json")
-    let engine = CleanupEngine(home: fixture.home)
+    let engine = CleanupEngine(home: fixture.home, activity: { [] })
     let scanned = try await engine.scan(includeAIHistory: true)
     let report = await engine.trash(scanned.items, runningAITools: ["gemini"], allowAIHistory: true)
     #expect(report.moved.isEmpty)
@@ -47,7 +47,7 @@ import Testing
     let file = try fixture.aiFile(".claude/projects/project/memory/11111111-2222-4333-8444-555555555555.jsonl")
     let item = CleanupItem(url: file, category: .aiHistory, bytes: 4096, fileCount: 1,
                            modified: .distantPast, state: .eligible, fingerprint: "forged")
-    let report = await CleanupEngine(home: fixture.home).trash([item], allowAIHistory: true)
+    let report = await CleanupEngine(home: fixture.home, activity: { [] }).trash([item], allowAIHistory: true)
     #expect(report.moved.isEmpty)
     #expect(report.failures.count == 1)
     #expect(FileManager.default.fileExists(atPath: file.path))

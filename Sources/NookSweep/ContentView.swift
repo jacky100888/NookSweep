@@ -3,20 +3,25 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var model = AppModel()
+    @StateObject private var applications = ApplicationsModel(automaticallyScans: false)
     @ObservedObject var monitor: StatusModel
 
     var body: some View {
         NavigationSplitView {
             SidebarView(model: model).navigationSplitViewColumnWidth(min: 210, ideal: 230, max: 270)
+                .disabled(model.isCleaning || applications.isRemoving)
         } detail: {
             if model.scope == .status {
                 StatusView(model: monitor)
+            } else if model.scope == .applications {
+                ApplicationsView(model: applications)
             } else {
             VStack(spacing: 0) {
                 header
                 Divider()
                 if model.isScanning { scanning }
                 else if model.result == nil { welcome }
+                else if model.isAIScope { AIResultsView(model: model) }
                 else { ResultsView(model: model) }
                 Divider()
                 footer
@@ -48,17 +53,21 @@ struct ContentView: View {
         .onChange(of: model.focusedID) { _, value in
             if value != nil { model.showDetails = true }
         }
-        .onChange(of: model.scope) { _, _ in model.focusedID = nil }
+        .onChange(of: model.scope) { _, value in
+            model.scopeDidChange()
+            if value == .applications, applications.applications.isEmpty, !applications.busy {
+                applications.startScan()
+            }
+        }
         .confirmationDialog("將 \(model.selectedItems.count) 個項目移到垃圾桶？",
                             isPresented: $model.confirmCleanup, titleVisibility: .visible) {
-            Button(model.selectedHistoryCount > 0 ? "確認移除舊對話與所選項目" : "移到垃圾桶", role: .destructive) {
-                model.cleanSelected(confirmedAIHistory: model.selectedHistoryCount > 0)
+            Button(model.selectedHistoryCount + model.selectedWorktreeCount > 0 ? "確認整理所選資料" : "移到垃圾桶", role: .destructive) {
+                model.cleanSelected(confirmedAIHistory: model.selectedHistoryCount > 0,
+                                    confirmedAIWorktrees: model.selectedWorktreeCount > 0)
             }
             Button("取消", role: .cancel) { }
         } message: {
-            Text(model.selectedHistoryCount > 0
-                 ? "這批包含 \(model.selectedHistoryCount) 筆舊 AI 對話，會失去原有對話上下文。請先結束對應工具。共 \(formatBytes(model.selectedBytes))，確認後重新驗證並移到垃圾桶；設定、憑證與記憶不在清理範圍。"
-                 : "共 \(formatBytes(model.selectedBytes))。請先結束相關應用程式與建置工作。確認後會重新驗證項目；仍可從垃圾桶取回。清空垃圾桶後才會釋放磁碟空間。")
+            Text(model.cleanupWarning)
         }
         .sheet(isPresented: $model.showReport) { ReportView(model: model) }
         .sheet(isPresented: $model.showWarnings) {
@@ -90,8 +99,8 @@ struct ContentView: View {
             Image(systemName: "externaldrive.badge.checkmark")
                 .font(.system(size: 58, weight: .light)).foregroundStyle(.secondary)
             Text("讓 Mac 多一點空間").font(.system(size: 26, weight: .semibold))
-            Text(model.scope?.category == .aiHistory
-                 ? "找出至少閒置 30 天的已知 AI 對話檔。\n舊對話需要另外確認；Codex 索引管理的紀錄會保留。"
+            Text(model.isAIScope
+                 ? "完整列出 AI 快取、版本、對話與工作副本，並說明保留原因。\n舊對話與工作副本需要另外確認；索引管理的紀錄會保留。"
                  : "找出閒置的應用程式快取、AI 暫存與舊記錄檔。\n掃描只會讀取資料，完成後由你選擇要整理的項目。")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary).lineSpacing(5)
             Button("開始掃描", systemImage: "magnifyingglass") { model.startScan() }

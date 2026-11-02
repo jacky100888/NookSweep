@@ -4,12 +4,22 @@ import SwiftUI
 
 enum SidebarScope: Hashable {
     case status
+    case applications
+    case aiOverview
     case all
     case category(CleanupCategory)
     var category: CleanupCategory? {
         if case .category(let value) = self { value } else { nil }
     }
-    var title: String { self == .status ? "即時狀態" : category?.rawValue ?? "智慧清理" }
+    var title: String {
+        switch self {
+        case .status: "即時狀態"
+        case .applications: "軟體移除"
+        case .aiOverview: "AI 工具整理"
+        case .all: "智慧清理"
+        case .category(let category): category.rawValue
+        }
+    }
 }
 
 struct DiskInfo {
@@ -50,12 +60,17 @@ final class AppModel: ObservableObject {
     var selectedBytes: Int64 { selectedItems.reduce(0) { $0 + $1.bytes } }
     var eligibleBytes: Int64 { eligibleItems.reduce(0) { $0 + $1.bytes } }
     var selectedHistoryCount: Int { selectedItems.filter(\.isAIHistory).count }
+    var selectedWorktreeCount: Int { selectedItems.filter { $0.category == .aiWorktrees }.count }
+    var isAIScope: Bool { scope == .aiOverview || scope?.category?.isAI == true }
     var focusedItem: CleanupItem? { items.first { $0.id == focusedID } }
     var visibleItems: [CleanupItem] {
         items.filter {
+            (scope != .aiOverview || $0.category.isAI) &&
             ((scope ?? .all).category == nil || $0.category == scope?.category) &&
             (!eligibleOnly || $0.isEligible) &&
-            (query.isEmpty || $0.url.path.localizedCaseInsensitiveContains(query))
+            (query.isEmpty || $0.url.path.localizedCaseInsensitiveContains(query) ||
+                $0.name.localizedCaseInsensitiveContains(query) ||
+                $0.aiToolName?.localizedCaseInsensitiveContains(query) == true)
         }
     }
     var runningBundleIDs: Set<String> {
@@ -88,9 +103,11 @@ final class AppModel: ObservableObject {
         let running = runningBundleIDs
         let runningTools = AIProcessActivity.runningToolIDs(bundleIdentifiers: running)
         let includeHistory = includeAIHistory
+        let categories = isAIScope ? Set(CleanupCategory.allCases.filter(\.isAI)) : nil
         operation = Task {
             do {
                 let value = try await engine.scan(includeAIHistory: includeHistory,
+                    inventoryAIHistory: true, categories: categories,
                     runningBundleIDs: running, runningAITools: runningTools) { [weak self] value in
                     Task { @MainActor in
                         guard let self, self.isScanning else { return }
@@ -119,24 +136,45 @@ final class AppModel: ObservableObject {
 
     func setIncludeAIHistory(_ enabled: Bool) {
         guard !busy else { return }
+        let rescan = result != nil && isAIScope
         includeAIHistory = enabled
         result = nil
         selected.removeAll()
         focusedID = nil
-        if !enabled, scope == .category(.aiHistory) { scope = .category(.aiCaches) }
-        status = "掃描範圍已調整，請重新掃描"
+        status = "清理權限已調整，請重新掃描"
+        if rescan { startScan() }
     }
 
-    func cleanSelected(confirmedAIHistory: Bool = false) {
+    func scopeDidChange() {
+        focusedID = nil
+        showDetails = false
+        eligibleOnly = !isAIScope
+    }
+
+    var cleanupWarning: String {
+        var warnings = ["共 \(formatBytes(selectedBytes))，請先結束相關應用程式、AI 工具與建置工作。"]
+        if selectedHistoryCount > 0 {
+            warnings.append("包含 \(selectedHistoryCount) 筆舊對話／本機歷史，會失去對話上下文或歷史還原能力。")
+        }
+        if selectedWorktreeCount > 0 {
+            warnings.append("包含 \(selectedWorktreeCount) 個工作副本，會連同 Git 登記移到垃圾桶；舊對話指向的工作路徑可能需要還原。")
+        }
+        warnings.append("會重新驗證後移到垃圾桶。關聯項目失敗時會嘗試回復；清空垃圾桶後才會釋放磁碟空間。")
+        return warnings.joined(separator: "\n\n")
+    }
+
+    func cleanSelected(confirmedAIHistory: Bool = false, confirmedAIWorktrees: Bool = false) {
         guard !busy, !selectedItems.isEmpty else { return }
         guard selectedHistoryCount == 0 || (includeAIHistory && confirmedAIHistory) else { return }
+        guard selectedWorktreeCount == 0 || confirmedAIWorktrees else { return }
         let candidates = selectedItems
         let running = runningBundleIDs
         let runningTools = AIProcessActivity.runningToolIDs(bundleIdentifiers: running)
         isCleaning = true
         operation = Task {
             let value = await engine.trash(candidates, runningBundleIDs: running,
-                runningAITools: runningTools, allowAIHistory: confirmedAIHistory)
+                runningAITools: runningTools, allowAIHistory: confirmedAIHistory,
+                allowAIWorktrees: confirmedAIWorktrees)
             let movedIDs = Set(value.moved.map { $0.originalURL.path })
             if let old = result {
                 result = ScanResult(items: old.items.filter { !movedIDs.contains($0.id) },

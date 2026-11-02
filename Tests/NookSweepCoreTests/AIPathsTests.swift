@@ -30,7 +30,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
     defer { try? fixture.dispose() }
     try fixture.aiFile(".claude/projects/project/\(conversationID).jsonl")
     try fixture.aiFile(".gemini/tmp/project/chats/session-old.json")
-    let engine = CleanupEngine(home: fixture.home)
+    let engine = CleanupEngine(home: fixture.home, activity: { [] })
     let regular = try await engine.scan()
     #expect(regular.items.isEmpty)
     let optedIn = try await engine.scan(includeAIHistory: true)
@@ -43,7 +43,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
     let fixture = try Fixture()
     defer { try? fixture.dispose() }
     try fixture.aiFile(".gemini/tmp/project/chats/session-recent.json", days: 10)
-    let result = try await CleanupEngine(home: fixture.home).scan(includeAIHistory: true)
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan(includeAIHistory: true)
     #expect(result.items.first?.state == .recent)
 }
 
@@ -53,7 +53,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
     let file = try fixture.aiFile(".codex/sessions/2026/01/01/rollout-old.jsonl")
     try fixture.aiFile(".codex/state_5.sqlite")
     try fixture.aiFile(".codex/state_5.sqlite-wal")
-    let engine = CleanupEngine(home: fixture.home)
+    let engine = CleanupEngine(home: fixture.home, activity: { [] })
     let result = try await engine.scan(includeAIHistory: true)
     let item = try #require(result.items.first)
     #expect(result.items.count == 1)
@@ -74,7 +74,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
                  ".gemini/oauth_creds.json", ".codex/auth.json"] {
         try fixture.aiFile(path)
     }
-    let result = try await CleanupEngine(home: fixture.home).scan(includeAIHistory: true)
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan(includeAIHistory: true)
     #expect(result.items.isEmpty)
 }
 
@@ -83,7 +83,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
     defer { try? fixture.dispose() }
     try fixture.aiFile(".claude/projects/project/\(conversationID)/subagents/agent-test.jsonl")
     try fixture.aiFile(".claude/projects/project/\(conversationID)/memory/agent-private.jsonl")
-    let result = try await CleanupEngine(home: fixture.home).scan(includeAIHistory: true)
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan(includeAIHistory: true)
     #expect(result.items.count == 1)
     #expect(result.items.first?.name == "agent-test.jsonl")
 }
@@ -96,7 +96,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("linked"),
                                              withDestinationURL: important.deletingLastPathComponent())
-    let result = try await CleanupEngine(home: fixture.home).scan(includeAIHistory: true)
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan(includeAIHistory: true)
     #expect(result.items.isEmpty)
     #expect(!result.warnings.isEmpty)
     #expect(FileManager.default.fileExists(atPath: important.path))
@@ -109,7 +109,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
     try fixture.aiFile(".codex/shell_snapshots/old.sh", days: 10)
     try fixture.aiFile("Library/Caches/com.openai.codex/old.cache", days: 10)
     try fixture.aiFile("Library/Caches/com.anthropic.claudefordesktop/old.cache", days: 10)
-    let result = try await CleanupEngine(home: fixture.home)
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] })
         .scan(runningAITools: ["claude", "codex"])
     #expect(result.items.count == 4)
     #expect(result.items.allSatisfy { $0.category == .aiCaches && $0.state == .running })
@@ -124,7 +124,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
         try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: directory.path)
     }
     let credentials = try fixture.aiFile(".codex/log/auth.json")
-    let result = try await CleanupEngine(home: fixture.home).scan()
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan()
     #expect(result.items.count == 1)
     #expect(result.items.first?.category == .aiCaches)
     #expect(result.items.first?.state.reason?.contains("資料庫") == true)
@@ -137,7 +137,7 @@ private let conversationID = "11111111-2222-4333-8444-555555555555"
     defer { try? fixture.dispose() }
     let source = try fixture.aiFile(".claude/debug/project/main.swift")
     try fixture.aiFile(".codex/shell_snapshots/unknown.json")
-    let result = try await CleanupEngine(home: fixture.home).scan()
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan()
     #expect(result.items.isEmpty)
     #expect(FileManager.default.fileExists(atPath: source.path))
 }

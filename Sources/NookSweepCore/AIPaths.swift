@@ -11,7 +11,9 @@ func aiToolIdentifier(for url: URL) -> String? {
         for (prefix, tool) in [("com.openai.codex", "codex"), ("com.openai.chat", "chatgpt"),
                                ("com.anthropic.claude", "claude"), ("com.anthropic.claudefordesktop", "claude"),
                                ("com.google.gemini", "gemini"), ("claude", "claude"),
-                               ("codex", "codex"), ("chatgpt", "chatgpt"), ("gemini", "gemini")] {
+                               ("codex", "codex"), ("chatgpt", "chatgpt"), ("gemini", "gemini"),
+                               ("cursor", "cursor"), ("com.todesktop.230313mzl4w4u92", "cursor"),
+                               ("opencode", "opencode")] {
             if name == prefix || name.hasPrefix(prefix + ".") { return tool }
         }
     }
@@ -41,9 +43,10 @@ enum AIHistoryLayout: Sendable {
                 parts[2] == "subagents" && name.hasPrefix("agent-") && name.hasSuffix(".jsonl")
         case .codex:
             return parts.count == 4 && parts.prefix(3).allSatisfy { !$0.isEmpty && $0.allSatisfy(\.isNumber) } &&
-                name.hasPrefix("rollout-") && name.hasSuffix(".jsonl")
+                name.hasPrefix("rollout-") && (name.hasSuffix(".jsonl") || name.hasSuffix(".jsonl.zst"))
         case .codexArchived:
-            return parts.count == 1 && name.hasPrefix("rollout-") && name.hasSuffix(".jsonl")
+            return parts.count == 1 && name.hasPrefix("rollout-") &&
+                (name.hasSuffix(".jsonl") || name.hasSuffix(".jsonl.zst"))
         case .gemini:
             return parts.count == 3 && parts[1] == "chats" &&
                 name.hasPrefix("session-") && name.hasSuffix(".json")

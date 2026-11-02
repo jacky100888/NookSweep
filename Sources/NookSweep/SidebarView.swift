@@ -20,25 +20,31 @@ struct SidebarView: View {
             List(selection: $model.scope) {
                 Section("這部 Mac") {
                     Label("即時狀態", systemImage: "waveform.path.ecg").tag(SidebarScope.status)
+                    Label("軟體移除", systemImage: "app.badge").tag(SidebarScope.applications)
                 }
                 Section("清理範圍") {
                     Label("全部項目", systemImage: "sparkles").tag(SidebarScope.all)
-                    ForEach(CleanupCategory.allCases) { category in
+                    ForEach(CleanupCategory.allCases.filter { !$0.isAI }) { category in
                         Label(category.rawValue, systemImage: category.symbol)
                             .tag(SidebarScope.category(category))
-                            .disabled(category == .aiHistory && !model.includeAIHistory)
+                    }
+                }
+                Section("AI 工具") {
+                    Label("AI 工具整理", systemImage: "sparkles").tag(SidebarScope.aiOverview)
+                    ForEach(CleanupCategory.allCases.filter(\.isAI)) { category in
+                        Label(category.rawValue, systemImage: category.symbol).tag(SidebarScope.category(category))
                     }
                 }
             }
             .listStyle(.sidebar)
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("包含舊 AI 對話", isOn: Binding(
+                Toggle("允許整理舊對話／歷史", isOn: Binding(
                     get: { model.includeAIHistory }, set: { model.setIncludeAIHistory($0) }
                 ))
                 .toggleStyle(.checkbox).font(.caption).disabled(model.busy)
                 Text(model.includeAIHistory
-                    ? "舊對話至少閒置 30 天；整理時將另行確認。"
-                    : "預設保留對話，AI 快取可單獨整理。")
+                    ? "僅能整理至少閒置 30 天的已知歷史，操作前另行確認。"
+                    : "對話仍會列出，預設保留並顯示原因。")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Divider()

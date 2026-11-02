@@ -12,7 +12,7 @@ import Testing
     try FileManager.default.setAttributes([
         .modificationDate: Date().addingTimeInterval(-40 * 86400)
     ], ofItemAtPath: file.path)
-    let engine = CleanupEngine(home: fixture.home)
+    let engine = CleanupEngine(home: fixture.home, activity: { [] })
     let scanned = try await engine.scan()
     let item = try #require(scanned.items.first)
     #expect(item.isEligible)
@@ -40,7 +40,7 @@ import Testing
             .modificationDate: Date().addingTimeInterval(-10 * 86400)
         ], ofItemAtPath: file.path)
     }
-    let result = try await CleanupEngine(home: fixture.home).scan()
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan()
     #expect(result.items.count == 5)
     #expect(result.items.allSatisfy { !$0.isEligible })
 }
@@ -53,7 +53,7 @@ import Testing
     try FileManager.default.setAttributes([
         .modificationDate: Date().addingTimeInterval(-10 * 86400)
     ], ofItemAtPath: directory.path)
-    let result = try await CleanupEngine(home: fixture.home).scan()
+    let result = try await CleanupEngine(home: fixture.home, activity: { [] }).scan()
     let item = try #require(result.items.first)
     #expect(item.bytes == 0)
     #expect(!item.isEligible)
