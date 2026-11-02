@@ -72,11 +72,15 @@ Codex 工作副本限定 `~/.codex/worktrees/<id>/<repo>`。候選必須仍已�
 
 ### 軟體移除
 
-「軟體移除」掃描 `/Applications` 與 `~/Applications`，包含一層子資料夾中的 `.app`，顯示名稱、版本、大小、bundle ID 與路徑。Apple 系統 App、NookSweep 自身、執行中的 App，以及無法安全讀取或掃描後已改變的 App 不允許移除；不會替使用者結束 App 或要求管理員權限。
+「軟體移除」掃描 `/Applications` 與 `~/Applications`，包含一層子資料夾中的 `.app`，顯示名稱、版本、大小、bundle ID 與路徑。Apple 系統 App、NookSweep 自身、執行中的 App，以及無法安全讀取或掃描後已改變的 App 不允許移除；不會替使用者結束 App。
 
 預設只移除 App，所有相關資料均不勾選。可選填的相關資料限定個人 Library 下的快取、偏好設定、Application Support、Logs、Containers 與 Saved Application State，依 bundle ID 或精確名稱對應。可能共用、名稱含糊或無法確認專用的路徑會保留；不掃描整個使用者資料夾尋找殘留。
 
 相關資料可能包含設定、登入狀態、資料庫與使用者內容，勾選前請確認備份及完整路徑。確認後先移除 App，再逐項重新驗證並處理所選相關資料；App 移除失敗時保留相關資料，部分失敗會逐項回報。可從垃圾桶將 App 與資料放回原路徑。
+
+macOS 可能因檔案權限或「App 管理」隱私權限制而拒絕移除。結果會顯示中文說明、原始系統錯誤、「在 Finder 處理」與「開啟 App 管理設定」。可在 Finder 選取被拒絕的項目後按 ⌘⌫，依系統提示驗證管理員身分；或至「系統設定 → 隱私權與安全性 → App 管理」允許 NookSweep，未列出時可按「＋」加入 `NookSweep.app`。App 仍在原位置時，調整權限後可重新掃描；App 已移除而相關資料保留時，請從結果的 Finder 按鈕處理資料。若仍被系統拒絕，請使用該 App 的官方移除程式。
+
+App 包含 `NSAppBundlesUsageDescription` 用途說明，這不代表已取得授權。NookSweep 不修改檔案擁有權或權限來繞過限制，也不自動續刪 Finder 處理後留下的相關資料。
 
 ### 保留規則
 

@@ -29,7 +29,8 @@ struct ApplicationsView: View {
             }
             if let report = model.report {
                 Divider()
-                ApplicationsReportView(report: report, reveal: model.reveal)
+                ApplicationsReportView(report: report, reveal: model.reveal,
+                                       openPermissions: model.openAppManagementSettings)
             }
             Divider()
             VStack(alignment: .leading, spacing: 6) {

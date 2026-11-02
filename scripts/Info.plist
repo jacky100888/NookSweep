@@ -7,11 +7,12 @@
     <key>CFBundleName</key><string>NookSweep</string>
     <key>CFBundleDisplayName</key><string>NookSweep</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.2.0</string>
-    <key>CFBundleVersion</key><string>4</string>
+    <key>CFBundleShortVersionString</key><string>1.2.1</string>
+    <key>CFBundleVersion</key><string>5</string>
     <key>CFBundleIconFile</key><string>NookSweep</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSAppBundlesUsageDescription</key><string>NookSweep 需要讀取應用程式資訊，並在您選取及確認後，將指定 App 移到垃圾桶。</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Jacky</string>

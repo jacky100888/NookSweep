@@ -54,6 +54,7 @@ public struct ApplicationRemovalResult: Identifiable, Sendable {
     public let trashURL: URL?
     public let bytes: Int64
     public let error: String?
+    public let needsPermissionHelp: Bool
     public var succeeded: Bool { trashURL != nil && error == nil }
 }
 

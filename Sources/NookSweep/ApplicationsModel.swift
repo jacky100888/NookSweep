@@ -128,4 +128,12 @@ final class ApplicationsModel: ObservableObject {
     }
 
     func reveal(_ url: URL) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+
+    func openAppManagementSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles") else { return }
+        if !NSWorkspace.shared.open(url),
+           let privacy = URL(string: "x-apple.systempreferences:com.apple.preference.security") {
+            NSWorkspace.shared.open(privacy)
+        }
+    }
 }

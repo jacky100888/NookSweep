@@ -53,7 +53,7 @@ struct ApplicationsDetailView: View {
                             Text("正在逐項移到垃圾桶…").font(.caption)
                         }
                     }
-                    Text("不會結束執行中的 App，也不會要求管理員權限。所有移除結果都會逐項顯示；垃圾桶可供復原。")
+                    Text("執行中的 App 需先自行結束。權限不足時會提供 Finder 處理與 App 管理設定指引；垃圾桶可供復原。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(24).frame(maxWidth: .infinity, alignment: .leading)

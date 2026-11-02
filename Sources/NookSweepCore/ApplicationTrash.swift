@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 extension ApplicationsEngine {
@@ -17,10 +18,10 @@ extension ApplicationsEngine {
             try validateApplicationPath(app.url)
             let destination = try trashOperation(app.url)
             results.append(ApplicationRemovalResult(originalURL: app.url, trashURL: destination,
-                                                     bytes: app.bytes, error: nil))
+                                                     bytes: app.bytes, error: nil, needsPermissionHelp: false))
         } catch {
-            results.append(failed(app.url, error.localizedDescription))
-            results += selected.map { failed($0.url, "App 未移除，相關資料已保留") }
+            results.append(failed(app.url, error))
+            results += selected.map { failed($0.url, CleanupError.refused("App 未移除，相關資料已保留")) }
             return ApplicationRemovalReport(results: results)
         }
         for item in selected {
@@ -43,13 +44,28 @@ extension ApplicationsEngine {
                 try validateRelatedPath(item.url, metadata: metadata)
                 let destination = try trashOperation(item.url)
                 results.append(ApplicationRemovalResult(originalURL: item.url, trashURL: destination,
-                                                         bytes: current.bytes, error: nil))
-            } catch { results.append(failed(item.url, error.localizedDescription)) }
+                                                         bytes: current.bytes, error: nil, needsPermissionHelp: false))
+            } catch { results.append(failed(item.url, error)) }
         }
         return ApplicationRemovalReport(results: results)
     }
 
-    private func failed(_ url: URL, _ message: String) -> ApplicationRemovalResult {
-        ApplicationRemovalResult(originalURL: url, trashURL: nil, bytes: 0, error: message)
+    private func failed(_ url: URL, _ error: Error) -> ApplicationRemovalResult {
+        let denied = isPermissionDenied(error)
+        let message = denied ? "權限不足，macOS 拒絕移動此項目。\n\(error.localizedDescription)" : error.localizedDescription
+        return ApplicationRemovalResult(originalURL: url, trashURL: nil, bytes: 0, error: message,
+                                        needsPermissionHelp: denied)
+    }
+
+    private func isPermissionDenied(_ error: Error) -> Bool {
+        var current: NSError? = error as NSError
+        var visited = Set<ObjectIdentifier>()
+        while let value = current, visited.insert(ObjectIdentifier(value)).inserted {
+            if value.domain == NSCocoaErrorDomain &&
+                [NSFileReadNoPermissionError, NSFileWriteNoPermissionError].contains(value.code) { return true }
+            if value.domain == NSPOSIXErrorDomain && [Int(EPERM), Int(EACCES)].contains(value.code) { return true }
+            current = value.userInfo[NSUnderlyingErrorKey] as? NSError
+        }
+        return false
     }
 }
