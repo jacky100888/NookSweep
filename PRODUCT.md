@@ -8,7 +8,11 @@ product
 
 macOS 14 以上的原生桌面工具，用來查看系統狀態，並預覽、選取與整理可清理的本機資料。
 
-本版為 1.3.0（build 6）。
+本版為 1.3.1（build 7）。
+
+以單一 Universal2 App ZIP 同時提供 `arm64` 與 `x86_64`，支援 Apple Silicon（M 系列）與 Intel Mac，兩種架構最低皆為 macOS 14。建置預設分別指定兩種架構的 `--triple`，再以 `lipo` 合併並逐一驗證架構，使用 ad hoc 簽署及全架構驗簽。
+
+CI 設定為標準 `macos-15`（arm64）與 `macos-15-intel`（x86_64）矩陣，分別執行原生測試，每個 job 都建置及檢查 Universal2 App；artifact 名稱依驗證主機區分，產物均為通用版。CI 實際結果以 Actions 紀錄為準，不以跨架構編譯代替原生測試；Intel GUI、Intel 電池硬體與 macOS 14 實機仍待個別驗證。App 尚未經 Apple Developer ID 簽署或公證。
 
 ## 本版設計決策
 

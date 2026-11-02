@@ -10,14 +10,25 @@ permissions:
 
 jobs:
   test-and-build:
-    runs-on: macos-15
+    name: 原生 ${{ matrix.host_arch }} 驗證與通用版建置
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            host_arch: arm64
+          - runner: macos-15-intel
+            host_arch: x86_64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: 取得原始碼
         uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: 顯示工具鏈
-        run: swift --version
+        run: |
+          swift --version
+          test "$(uname -m)" = "${{ matrix.host_arch }}"
       - name: 執行測試
         run: bash scripts/test.sh
       - name: 建置 App
@@ -27,6 +38,6 @@ jobs:
       - name: 保存 App
         uses: actions/upload-artifact@v4
         with:
-          name: NookSweep-macOS
+          name: NookSweep-Universal2-${{ matrix.host_arch }}
           path: ${{ runner.temp }}/NookSweep-app.zip
           if-no-files-found: error

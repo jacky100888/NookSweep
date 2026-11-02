@@ -6,7 +6,7 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 
 使用 Swift、Foundation 與 macOS 系統框架，無第三方相依套件，以 [MIT 授權](LICENSE) 開源。
 
-目前版本為 1.3.0（build 6）。
+目前版本為 1.3.1（build 7）。
 
 ## 功能
 
@@ -20,9 +20,9 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 
 ## 開啟與使用
 
-從 [GitHub Releases](https://github.com/jacky100888/NookSweep/releases) 下載 App；首個手動發布版本適用 Apple Silicon。
+從 [GitHub Releases](https://github.com/jacky100888/NookSweep/releases) 下載 Universal2 版 App。同一份 ZIP 內含 `arm64` 與 `x86_64`，支援 Apple Silicon（M 系列）與 Intel Mac。
 
-需要 macOS 14 以上。開啟 `NookSweep.app`，也可以將它移到「應用程式」。下載產物的架構以發布說明為準；自行建置時會使用目前工具鏈的目標架構。
+兩種架構都需要 macOS 14 以上。開啟 `NookSweep.app`，也可以將它移到「應用程式」。自行建置時，預設也會產出包含兩種架構的 Universal2 App。
 
 側欄「即時狀態」提供完整指標；選單列的波形圖示提供簡短面板。關閉主視窗後仍可從選單列查看、暫停監測、重新開啟主視窗或結束 App。
 
@@ -120,13 +120,15 @@ bash scripts/test.sh
 bash scripts/build-app.sh
 ```
 
-建置腳本會在專案上層產出 `NookSweep.app` 與 `NookSweep-app.zip`，並進行本機 ad hoc 簽署。腳本使用 SwiftPM 傳統建置模式；測試腳本在需要時明確指定 Command Line Tools 內附的 Swift Testing 與巨集位置，不下載套件。
+建置腳本使用 SwiftPM 傳統建置模式，預設分別以 `--triple arm64-apple-macosx14.0` 與 `--triple x86_64-apple-macosx14.0` 編譯 release 執行檔，再以 `lipo` 合併為 Universal2，並逐一驗證兩種架構。腳本會在專案上層產出 `NookSweep.app` 與 `NookSweep-app.zip`，進行本機 ad hoc 簽署後，以 `codesign --verify --strict --all-architectures` 檢查全部架構的簽章。
+
+測試腳本預設在目前主機的原生架構執行；需要時明確指定 Command Line Tools 內附的 Swift Testing 與巨集位置，不下載套件。
 
 測試只使用臨時夾具，其中部分測試會透過系統垃圾桶 API 移動自己建立的檔案，再移除該夾具。請勿將測試根目錄改成真實使用者資料，也不需要以 `sudo` 執行。
 
-GitHub Actions 會執行測試、建置 App 並上傳 App ZIP。實際測試與發布結果請以儲存庫的 Actions 與發布說明為準。
+GitHub Actions 設定為標準 `macos-15`（arm64）與 `macos-15-intel`（x86_64）矩陣，各自執行原生測試；每個 job 都會建置 Universal2 App、檢查雙架構及簽章，並上傳 App ZIP。Artifact 名稱依驗證主機分為 `NookSweep-Universal2-arm64` 與 `NookSweep-Universal2-x86_64`，其中 App 均包含兩種架構。實際測試與發布結果請以儲存庫的 Actions 與發布說明為準。
 
-App 尚未經 Apple Developer ID 簽署或公證。下載的 App 可能受到 Gatekeeper 限制；請自行檢視原始碼並建置，對外正式散布前需完成適當的簽署與公證。Intel 與 macOS 14 實機相容性仍需個別驗證。
+App 尚未經 Apple Developer ID 簽署或公證。下載的 App 可能受到 Gatekeeper 限制；請自行檢視原始碼並建置，對外正式散布前需完成適當的簽署與公證。Universal2 編譯與簽章檢查不代表完成所有實機驗證；Intel GUI、Intel 電池硬體讀值及 macOS 14 實機相容性仍需個別驗證。
 
 ## 專案結構
 
