@@ -1,0 +1,30 @@
+name: macOS 驗證
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    steps:
+      - name: 取得原始碼
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: 顯示工具鏈
+        run: swift --version
+      - name: 執行測試
+        run: bash scripts/test.sh
+      - name: 建置 App
+        run: bash scripts/build-app.sh
+      - name: 保存 App
+        uses: actions/upload-artifact@v4
+        with:
+          name: NookSweep-macOS
+          path: ../NookSweep-app.zip
+          if-no-files-found: error

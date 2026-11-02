@@ -1,0 +1,10 @@
+.build/
+.swiftpm/
+.DS_Store
+.codex/
+dist/
+*.app/
+*-app.zip
+*-source.zip
+*.xcuserstate
+xcuserdata/
