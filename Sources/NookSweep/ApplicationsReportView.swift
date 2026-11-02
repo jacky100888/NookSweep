@@ -11,21 +11,21 @@ struct ApplicationsReportView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("移除結果 · \(report.movedCount) 項已移到垃圾桶 · \(formatBytes(report.movedBytes))")
                 .font(.subheadline.weight(.medium))
-            if report.results.contains(where: \.needsPermissionHelp) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("macOS 權限不足")
-                        .font(.subheadline.weight(.semibold))
-                    Text("可在 Finder 選取被拒絕的項目後按 ⌘⌫，依系統提示驗證管理員身分。也可到「系統設定 → 隱私權與安全性 → App 管理」允許 NookSweep；若未列出，按「＋」加入 NookSweep.app。App 仍在原位置時，調整權限後可重新掃描；App 已移除時，請用下方 Finder 按鈕處理保留資料。若仍被拒絕，請使用該 App 的官方移除程式。")
-                        .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button("開啟 App 管理設定", systemImage: "gearshape", action: openPermissions)
-                        .font(.caption)
-                }
-                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
+                    if report.results.contains(where: \.needsPermissionHelp) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("macOS 權限不足")
+                                .font(.subheadline.weight(.semibold))
+                            Text("可在 Finder 選取被拒絕的項目後按 ⌘⌫，依系統提示驗證管理員身分。也可到「系統設定 → 隱私權與安全性 → App 管理」允許 NookSweep；若未列出，按「＋」加入 NookSweep.app。App 仍在原位置時，調整權限後可重新掃描；App 已移除時，請用下方 Finder 按鈕處理保留資料。若仍被拒絕，請使用該 App 的官方移除程式。")
+                                .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button("開啟 App 管理設定", systemImage: "gearshape", action: openPermissions)
+                                .font(.caption)
+                        }
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                    }
                     ForEach(report.results) { item in
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: item.succeeded ? "checkmark.circle" : "exclamationmark.triangle")
@@ -43,7 +43,7 @@ struct ApplicationsReportView: View {
                         }
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
-            }.frame(maxHeight: 140)
+            }.frame(maxHeight: 180)
         }.padding(.horizontal, 24).padding(.vertical, 14)
     }
 }

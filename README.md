@@ -6,7 +6,7 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 
 使用 Swift、Foundation 與 macOS 系統框架，無第三方相依套件，以 [MIT 授權](LICENSE) 開源。
 
-目前版本為 1.3.1（build 7）。
+目前版本為 1.3.2（build 8）。
 
 ## 功能
 
