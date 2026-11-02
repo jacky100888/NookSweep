@@ -17,8 +17,12 @@ struct NookSweepApp: App {
                     }
                 }
             }
-        MenuBarExtra("NookSweep", systemImage: "leaf.fill") {
+        MenuBarExtra {
             MenuBarStatusView(model: monitor)
+        } label: {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable().scaledToFit().frame(width: 18, height: 18)
+                .accessibilityLabel("NookSweep 狀態")
         }
         .menuBarExtraStyle(.window)
     }

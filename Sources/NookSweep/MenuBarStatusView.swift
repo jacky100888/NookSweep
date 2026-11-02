@@ -9,7 +9,7 @@ struct MenuBarStatusView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label("NookSweep", systemImage: "leaf.fill").font(.headline)
+                Text("NookSweep").font(.headline)
                 Spacer()
                 Text(model.snapshot?.thermalState ?? "讀取中").font(.caption).foregroundStyle(.secondary)
             }

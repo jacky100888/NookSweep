@@ -7,10 +7,16 @@ icon.lockFocus()
 NSColor(srgbRed: 0.96, green: 0.75, blue: 0.18, alpha: 1).setFill()
 NSBezierPath(roundedRect: NSRect(x: 80, y: 80, width: 864, height: 864),
              xRadius: 190, yRadius: 190).fill()
-if let symbol = NSImage(systemSymbolName: "internaldrive.fill", accessibilityDescription: nil) {
-    symbol.withSymbolConfiguration(.init(pointSize: 490, weight: .regular))?
-        .draw(in: NSRect(x: 235, y: 275, width: 554, height: 474))
-}
+NSColor(srgbRed: 0.14, green: 0.14, blue: 0.12, alpha: 1).setStroke()
+let mark = NSBezierPath()
+mark.move(to: NSPoint(x: 310, y: 310))
+mark.line(to: NSPoint(x: 310, y: 710))
+mark.line(to: NSPoint(x: 714, y: 310))
+mark.line(to: NSPoint(x: 714, y: 710))
+mark.lineWidth = 104
+mark.lineCapStyle = .round
+mark.lineJoinStyle = .round
+mark.stroke()
 icon.unlockFocus()
 
 for size in [16, 32, 128, 256, 512] {

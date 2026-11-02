@@ -1,3 +1,4 @@
+import AppKit
 import NookSweepCore
 import SwiftUI
 
@@ -7,9 +8,8 @@ struct SidebarView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "internaldrive.fill")
-                    .font(.title2).foregroundStyle(.primary)
-                    .padding(9).background(.yellow.opacity(0.65), in: RoundedRectangle(cornerRadius: 10))
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable().scaledToFit().frame(width: 40, height: 40)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("NookSweep").font(.headline)
                     Text("留空間給重要的事").font(.caption).foregroundStyle(.secondary)
