@@ -125,7 +125,14 @@ public struct TrashedItem: Sendable {
 public struct CleanupReport: Sendable {
     public let moved: [TrashedItem]
     public let failures: [String]
+    public let recoveryReferences: [WorktreeRecoveryReference]
     public var bytes: Int64 { moved.reduce(0) { $0 + $1.bytes } }
+
+    init(moved: [TrashedItem], failures: [String], recoveryReferences: [WorktreeRecoveryReference] = []) {
+        self.moved = moved
+        self.failures = failures
+        self.recoveryReferences = recoveryReferences
+    }
 }
 
 public enum CleanupError: LocalizedError {
@@ -139,10 +146,13 @@ public enum CleanupError: LocalizedError {
 public actor CleanupEngine {
     let home: URL
     let activity: @Sendable () -> Set<String>
+    let trashOperation: @Sendable (URL) throws -> URL
     public init(home: URL = FileManager.default.homeDirectoryForCurrentUser,
-                activity: @escaping @Sendable () -> Set<String> = { AIProcessActivity.runningToolIDs() }) {
+                activity: @escaping @Sendable () -> Set<String> = { AIProcessActivity.runningToolIDs() },
+                trashOperation: (@Sendable (URL) throws -> URL)? = nil) {
         self.home = home.standardizedFileURL
         self.activity = activity
+        self.trashOperation = trashOperation ?? { try systemTrash($0) }
     }
 
 }

@@ -52,14 +52,15 @@ struct GitInspection {
         }
     }
 
-    func preservationReason() throws -> String? {
+    func review() throws -> AIWorktreeReview {
+        let initialHead = try currentHeadOID()
         let records = try output(["worktree", "list", "--porcelain", "-z"])
             .components(separatedBy: "\0\0").filter { !$0.isEmpty }
             .map { $0.components(separatedBy: "\0").filter { !$0.isEmpty } }
         guard let primary = records.first,
               let primaryPath = primary.first?.stripPrefix("worktree "),
               !primary.contains("bare"), Self.path(primaryPath, relativeTo: repository).path != repository.path else {
-            return "主工作副本或無法確認主儲存庫，保留原狀"
+            throw CleanupError.refused("主工作副本或無法確認主儲存庫，保留原狀")
         }
         let matching = records.filter {
             guard let path = $0.first?.stripPrefix("worktree ") else { return false }
@@ -69,38 +70,67 @@ struct GitInspection {
         guard matching.count == 1, let record = matching.first,
               AICatalogFiles.isDirectory(primaryURL),
               try AICatalogFiles.blockReason(primaryURL) == nil else {
-            return "無法證實工作副本仍已註冊，保留原狀"
+            throw CleanupError.refused("無法證實工作副本仍已註冊，保留原狀")
         }
         if record.contains(where: { $0 == "locked" || $0.hasPrefix("locked ") || $0.hasPrefix("prunable") }) {
-            return "Git 工作副本已鎖定或註冊失效，保留原狀"
+            throw CleanupError.refused("Git 工作副本已鎖定或註冊失效，保留原狀")
         }
         let flags = try output(["ls-files", "-v", "-z"]).components(separatedBy: "\0")
         if flags.contains(where: { $0.first == "S" || $0.first?.isLowercase == true }) {
-            return "含略過檢查或 sparse checkout 的索引項目，無法證實檔案乾淨"
+            throw CleanupError.refused("含略過檢查或 sparse checkout 的索引項目，無法證實檔案乾淨")
         }
         if try output(["ls-files", "--stage", "-z"]).components(separatedBy: "\0")
             .contains(where: { $0.hasPrefix("160000 ") }) {
-            return "含 submodule，無法確認子儲存庫資料可還原"
+            throw CleanupError.refused("含 submodule，無法確認子儲存庫資料可還原")
         }
         if AICatalogFiles.exists(commonDirectory.appendingPathComponent("info/grafts")) {
-            return "Git 歷史有 graft 覆寫，無法確認原始合併狀態"
+            throw CleanupError.refused("Git 歷史有 graft 覆寫，無法確認原始合併狀態")
+        }
+        guard try output(["ls-files", "--unmerged", "-z"]).isEmpty else {
+            throw CleanupError.refused("Git 索引仍有未解決衝突，保留原狀")
         }
         let state = try run(["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignored=matching",
                              "--ignore-submodules=none"])
-        guard state.status == 0 else { return "無法確認工作副本是否乾淨，保留原狀" }
-        guard state.data.isEmpty else { return "含變更、未追蹤或已忽略的檔案，保留原狀" }
+        guard state.status == 0 else { throw CleanupError.refused("無法確認工作副本狀態，保留原狀") }
+        var counts = [0, 0, 0]
+        let statusRecords = state.data.split(separator: 0)
+        var index = 0
+        while index < statusRecords.count {
+            let code = Array(statusRecords[index].prefix(2))
+            index += 1
+            if code == [63, 63] { counts[1] += 1 }
+            else if code == [33, 33] { counts[2] += 1 }
+            else {
+                counts[0] += 1
+                if code.contains(82) || code.contains(67) { index += 1 }
+            }
+        }
         var main: String?
         for branch in ["main", "master"] {
             if try run(["show-ref", "--verify", "--quiet", "refs/heads/\(branch)"]).status == 0 {
-                main = "refs/heads/\(branch)"
+                main = branch
                 break
             }
         }
-        guard let main else { return "找不到主儲存庫的 main／master，保留原狀" }
-        guard try run(["merge-base", "--is-ancestor", "HEAD", main]).status == 0 else {
-            return "工作副本 HEAD 尚未合併至 main／master，保留原狀"
+        guard let main else { throw CleanupError.refused("找不到主儲存庫的 main／master，保留原狀") }
+        let merged = try run(["merge-base", "--is-ancestor", "HEAD", "refs/heads/\(main)"])
+        guard [0, 1].contains(merged.status),
+              let ahead = Int(try output(["rev-list", "--count", "refs/heads/\(main)..HEAD"])
+                .trimmingCharacters(in: .newlines)), ahead >= 0,
+              (merged.status == 0) == (ahead == 0), try currentHeadOID() == initialHead else {
+            throw CleanupError.refused("無法確認 HEAD 與合併狀態一致，請重新掃描")
         }
-        return nil
+        return AIWorktreeReview(headOID: initialHead, commonGitDirectory: commonDirectory,
+            trackedChanges: counts[0], untrackedItems: counts[1], ignoredItems: counts[2],
+            unmergedCommitCount: ahead, comparisonBranch: main)
+    }
+
+    func currentHeadOID() throws -> String {
+        let head = try output(["rev-parse", "--verify", "HEAD^{commit}"]).trimmingCharacters(in: .newlines)
+        guard [40, 64].contains(head.count), head.allSatisfy({ $0.isASCII && $0.isHexDigit }) else {
+            throw CleanupError.refused("HEAD 不是可確認的提交，保留原狀")
+        }
+        return head
     }
 
     private func verifyAdministration() throws {
@@ -127,7 +157,7 @@ struct GitInspection {
         return text
     }
 
-    private func run(_ arguments: [String]) throws -> (status: Int32, data: Data) {
+    func run(_ arguments: [String], checkCancellationAfterExit: Bool = true) throws -> (status: Int32, data: Data) {
         try Task.checkCancellation()
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -149,7 +179,7 @@ struct GitInspection {
         // 先持續排空唯一的 pipe，避免大量未追蹤檔名塞滿 pipe 而互相等待。
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        try Task.checkCancellation()
+        if checkCancellationAfterExit { try Task.checkCancellation() }
         return (process.terminationStatus, data)
     }
 

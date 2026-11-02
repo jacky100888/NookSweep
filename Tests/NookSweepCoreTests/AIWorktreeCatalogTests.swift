@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import NookSweepCore
 
-private struct WorktreeFixture {
+struct WorktreeFixture {
     let fixture: Fixture
     let primary: URL
     let worktree: URL

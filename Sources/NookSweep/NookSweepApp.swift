@@ -5,7 +5,10 @@ import SwiftUI
 struct NookSweepApp: App {
     @StateObject private var monitor = StatusModel()
     var body: some Scene {
-        WindowGroup("NookSweep", id: "main") { ContentView(monitor: monitor) }
+        WindowGroup("NookSweep", id: "main") {
+            ContentView(monitor: monitor)
+                .onAppear { NSApplication.shared.applicationIconImage = AppIcon.image }
+        }
             .defaultSize(width: 1160, height: 740)
             .commands {
                 CommandGroup(replacing: .newItem) { }

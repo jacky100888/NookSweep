@@ -34,12 +34,16 @@ struct ItemDetailView: View {
                         Button("在 Finder 顯示", systemImage: "folder") { model.reveal(item) }
                     }
                     Divider()
-                    Label(item.isEligible ? "符合閒置天數，可移到垃圾桶" : "保留此項目",
+                    Label(item.isEligible ? (item.category == .aiWorktrees ? "可整理，需先確認工作副本風險" : "符合閒置天數，可移到垃圾桶") : "保留此項目",
                           systemImage: item.isEligible ? "checkmark.shield" : "lock.shield")
                         .font(.subheadline.weight(.medium))
-                    Text(item.state.reason ?? "所有內容至少 \(item.category.minimumDays) 天未修改。清理前請先結束相關應用程式與建置工作，避免快取重新產生。")
+                    Text(item.state.reason ?? (item.category == .aiWorktrees
+                        ? "請先停止使用這個工作副本的 AI 工作、編輯器、終端機及建置程序，再確認整理。"
+                        : "所有內容至少 \(item.category.minimumDays) 天未修改。清理前請先結束相關應用程式與建置工作，避免快取重新產生。"))
                         .font(.caption).foregroundStyle(.secondary)
-                    Text(item.isAIHistory
+                    Text(item.category == .aiWorktrees
+                         ? "工作副本含專案檔案，不能當成可重新產生的快取。還原時須一起放回工作區及 Git 管理目錄；手動模式會另建 Git 保留參照，原儲存庫仍須保留。"
+                         : item.isAIHistory
                          ? "這是對話紀錄，並非可重建的快取。移除後會失去該段上下文；取回時須放回原路徑。"
                          : "快取可由應用程式重新產生；舊記錄檔移除後會失去當時的診斷資訊。")
                         .font(.caption).foregroundStyle(.secondary)

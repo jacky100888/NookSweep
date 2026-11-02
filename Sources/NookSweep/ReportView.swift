@@ -26,6 +26,26 @@ struct ReportView: View {
                         NSPasteboard.general.setString(paths.joined(separator: "\n"), forType: .string)
                     }
                 }
+                if !report.recoveryReferences.isEmpty {
+                    Text("Git 提交保留參照").fontWeight(.medium)
+                    Text("參照會留在原儲存庫，保護未合併提交，不會自動刪除。還原時須保留原儲存庫；先重建缺少的父資料夾，再將工作區與 Git 管理目錄一起放回原位置。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(Array(report.recoveryReferences.enumerated()), id: \.offset) { _, reference in
+                                Text("\(reference.worktreeURL.path)\nGit：\(reference.commonGitDirectory.path)\n參照：\(reference.refName)\nHEAD：\(reference.headOID)")
+                                    .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }.frame(maxHeight: 130)
+                    Button("複製 Git 還原資訊") {
+                        let references = report.recoveryReferences.map {
+                            "工作副本：\($0.worktreeURL.path)\n共用 Git 目錄：\($0.commonGitDirectory.path)\n保留參照：\($0.refName)\nHEAD：\($0.headOID)"
+                        }.joined(separator: "\n\n")
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(references, forType: .string)
+                    }
+                }
                 if !report.failures.isEmpty {
                     Text("未完整完成的項目：").fontWeight(.medium)
                     ScrollView {

@@ -61,7 +61,8 @@ struct ContentView: View {
         }
         .confirmationDialog("將 \(model.selectedItems.count) 個項目移到垃圾桶？",
                             isPresented: $model.confirmCleanup, titleVisibility: .visible) {
-            Button(model.selectedHistoryCount + model.selectedWorktreeCount > 0 ? "確認整理所選資料" : "移到垃圾桶", role: .destructive) {
+            Button(model.selectedWorktreeCount > 0 ? "已停止使用，確認整理工作副本" :
+                   (model.selectedHistoryCount > 0 ? "確認整理所選資料" : "移到垃圾桶"), role: .destructive) {
                 model.cleanSelected(confirmedAIHistory: model.selectedHistoryCount > 0,
                                     confirmedAIWorktrees: model.selectedWorktreeCount > 0)
             }
@@ -85,8 +86,8 @@ struct ContentView: View {
             Spacer()
             if model.result != nil {
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(formatBytes(model.eligibleBytes)).font(.title2.weight(.semibold)).monospacedDigit()
-                    Text("\(model.eligibleItems.count) 項可整理").font(.caption).foregroundStyle(.secondary)
+                    Text(formatBytes(model.scopeEligibleBytes)).font(.title2.weight(.semibold)).monospacedDigit()
+                    Text("\(model.scopeEligibleItems.count) 項可整理").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }

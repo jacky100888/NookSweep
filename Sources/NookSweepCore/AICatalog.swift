@@ -1,7 +1,7 @@
 import Foundation
 
 extension CleanupEngine {
-    func catalogEntries(warnings: inout [String]) throws -> [AICatalogEntry] {
+    func catalogEntries(warnings: inout [String], manualWorktreeReview: Bool = false) throws -> [AICatalogEntry] {
         guard home.resolvingSymlinksInPath().standardizedFileURL.path == home.path else {
             warnings.append("使用者目錄包含符號連結，未掃描額外 AI 資料")
             return []
@@ -10,7 +10,7 @@ extension CleanupEngine {
             ("AI 快取", { try AICacheCatalog.candidates(home: self.home) }),
             ("Claude 版本", { try ClaudeVersionCatalog.candidates(home: self.home) }),
             ("本機歷史", { try AILegacyHistoryCatalog.candidates(home: self.home) }),
-            ("工作副本", { try AIWorktreeCatalog.candidates(home: self.home) })
+            ("工作副本", { try AIWorktreeCatalog.candidates(home: self.home, manualWorktreeReview: manualWorktreeReview) })
         ]
         var entries: [AICatalogEntry] = []
         for (name, discover) in providers {
@@ -22,12 +22,12 @@ extension CleanupEngine {
         return entries
     }
 
-    func catalogEntry(for url: URL) throws -> AICatalogEntry? {
+    func catalogEntry(for url: URL, manualWorktreeReview: Bool = false) throws -> AICatalogEntry? {
         guard url.standardizedFileURL.pathComponents.starts(with: home.pathComponents) else { return nil }
         if let result = try AICacheCatalog.entry(for: url, home: home) { return result }
         if let result = try ClaudeVersionCatalog.entry(for: url, home: home) { return result }
         if let result = try AILegacyHistoryCatalog.entry(for: url, home: home) { return result }
-        return try AIWorktreeCatalog.entry(for: url, home: home)
+        return try AIWorktreeCatalog.entry(for: url, home: home, manualWorktreeReview: manualWorktreeReview)
     }
 
     func inventoryMetadata(for url: URL, category: CleanupCategory,

@@ -9,6 +9,7 @@ struct AIResultsView: View {
         model.items.filter { $0.category.isAI && (model.scope?.category == nil || $0.category == model.scope?.category) }
     }
     private var visible: [CleanupItem] { model.visibleItems.filter { $0.category.isAI } }
+    private var selectableCount: Int { visible.filter(\.isEligible).count }
     private var tools: [String] {
         Set(visible.map { $0.aiToolID ?? "unknown" }).sorted {
             toolName($0).localizedStandardCompare(toolName($1)) == .orderedAscending
@@ -29,13 +30,29 @@ struct AIResultsView: View {
                         .toggleStyle(.checkbox).font(.caption).fixedSize()
                 }
                 HStack {
-                    Menu {
-                        Button("選取目前顯示的可整理項目") { model.selectVisible() }
-                            .keyboardShortcut("a", modifiers: [.command, .shift])
-                        Button("取消所有選取") { model.selected.removeAll() }
-                    } label: { Label("選取", systemImage: "checklist") }
+                    Button("全選可整理 · \(selectableCount.formatted()) 項", systemImage: "checklist") {
+                        model.selectVisible()
+                    }
+                    .keyboardShortcut("a", modifiers: [.command, .shift])
+                    .disabled(selectableCount == 0)
+                    .help("選取符合目前搜尋與分類的全部可整理項目，包含收合群組內的項目（⌘⇧A）")
+                    Button("取消全選") { model.selected.removeAll() }
+                        .disabled(model.selected.isEmpty)
                     Spacer()
-                    Text("顯示 \(visible.count.formatted()) 項")
+                    Text("顯示 \(visible.count.formatted()) 項 · 已選 \(model.selectedItems.count.formatted()) 項")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if model.scope?.category == .aiHistory, !model.includeAIHistory {
+                    Text("先開啟左側「允許整理舊對話／歷史」，即可全選可整理的舊對話。索引管理或執行中的資料仍會保留。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if model.scope == .aiOverview || model.scope?.category == .aiWorktrees {
+                    Toggle("手動整理工作副本（包含近期、未提交或未合併內容）", isOn: Binding(
+                        get: { model.manualWorktreeReview }, set: { model.setManualWorktreeReview($0) }))
+                        .toggleStyle(.checkbox).font(.caption)
+                    Text(model.manualWorktreeReview
+                        ? "先停止使用要整理的工作副本，再查看各項風險。會保留 Git 提交參照；鎖定、Git 操作未完成或結構不明的項目仍保留。"
+                        : "預設只整理乾淨且已合併的工作副本；含變更或未合併的項目可開啟手動整理後預覽。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

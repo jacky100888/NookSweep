@@ -41,15 +41,15 @@ extension CleanupEngine {
 
     func state(for url: URL, category: CleanupCategory, bytes: Int64, modified: Date,
                runningBundleIDs: Set<String>, runningAITools: Set<String> = [],
-               knownEntry: AICatalogEntry? = nil) throws -> ItemState {
+               knownEntry: AICatalogEntry? = nil, manualWorktreeReview: Bool = false) throws -> ItemState {
         let name = url.lastPathComponent.lowercased()
-        let entry = try knownEntry ?? catalogEntry(for: url)
+        let entry = try knownEntry ?? catalogEntry(for: url, manualWorktreeReview: manualWorktreeReview)
         if let reason = entry?.preservationReason { return .blocked(reason) }
         if let tool = entry?.metadata.toolID ?? aiToolIdentifier(for: url) {
             if category == .aiHistory, tool == "codex" {
                 return .blocked("Codex 對話受資料庫索引管理，請在 Codex 中管理對話")
             }
-            if runningAITools.contains(tool) { return .running }
+            if runningAITools.contains(tool), !(category == .aiWorktrees && manualWorktreeReview) { return .running }
             if category != .aiWorktrees, let reason = try aiContentBlockReason(url) { return .blocked(reason) }
         }
         if [".gitignore", ".ds_store", "cachedir.tag", "lock"].contains(name) ||
@@ -68,6 +68,7 @@ extension CleanupEngine {
             return .running
         }
         if bytes == 0 { return .blocked("沒有可回收的檔案內容") }
+        if category == .aiWorktrees && manualWorktreeReview { return .eligible }
         let cutoff = Date().addingTimeInterval(-Double(category.minimumDays) * 86400)
         return modified > cutoff ? .recent : .eligible
     }

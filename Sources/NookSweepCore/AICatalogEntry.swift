@@ -13,12 +13,15 @@ public struct AIItemMetadata: Equatable, Sendable {
     public let kind: AIDataKind
     public let title: String
     public let note: String?
+    public let worktreeReview: AIWorktreeReview?
 
-    public init(toolID: String, kind: AIDataKind, title: String, note: String? = nil) {
+    public init(toolID: String, kind: AIDataKind, title: String, note: String? = nil,
+                worktreeReview: AIWorktreeReview? = nil) {
         self.toolID = toolID
         self.kind = kind
         self.title = title
         self.note = note
+        self.worktreeReview = worktreeReview
     }
 }
 

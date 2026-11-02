@@ -4,6 +4,7 @@ extension CleanupEngine {
     public func scan(
         includeAIHistory: Bool = false,
         inventoryAIHistory: Bool = false,
+        manualWorktreeReview: Bool = false,
         categories: Set<CleanupCategory>? = nil,
         runningBundleIDs: Set<String> = [],
         runningAITools: Set<String> = [],
@@ -15,7 +16,7 @@ extension CleanupEngine {
         var warnings: [String] = []
         var totalFiles = 0
         var seen = Set<String>()
-        let catalog = try catalogEntries(warnings: &warnings)
+        let catalog = try catalogEntries(warnings: &warnings, manualWorktreeReview: manualWorktreeReview)
         func inspect(_ url: URL, entry: AICatalogEntry? = nil) throws {
             try Task.checkCancellation()
             guard seen.insert(url.standardizedFileURL.path).inserted else { return }
@@ -33,7 +34,7 @@ extension CleanupEngine {
                 var state = try state(for: url, category: root.category,
                                       bytes: value.bytes, modified: value.modified,
                                       runningBundleIDs: runningBundleIDs, runningAITools: runningAITools,
-                                      knownEntry: entry)
+                    knownEntry: entry, manualWorktreeReview: manualWorktreeReview)
                 if root.category == .aiHistory, !includeAIHistory, state == .eligible {
                     state = .blocked("已保留舊對話／歷史，開啟允許整理後重新掃描才可選取")
                 }

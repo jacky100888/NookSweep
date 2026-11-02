@@ -8,7 +8,7 @@ struct SidebarView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
+                Image(nsImage: AppIcon.image)
                     .resizable().scaledToFit().frame(width: 40, height: 40)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("NookSweep").font(.headline)

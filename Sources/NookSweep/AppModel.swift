@@ -50,6 +50,7 @@ final class AppModel: ObservableObject {
     @Published var confirmCleanup = false
     @Published var showDetails = false
     @Published private(set) var includeAIHistory = false
+    @Published private(set) var manualWorktreeReview = false
     private let engine = CleanupEngine()
     private var operation: Task<Void, Never>?
 
@@ -58,7 +59,13 @@ final class AppModel: ObservableObject {
     var eligibleItems: [CleanupItem] { items.filter(\.isEligible) }
     var selectedItems: [CleanupItem] { eligibleItems.filter { selected.contains($0.id) } }
     var selectedBytes: Int64 { selectedItems.reduce(0) { $0 + $1.bytes } }
-    var eligibleBytes: Int64 { eligibleItems.reduce(0) { $0 + $1.bytes } }
+    var scopeEligibleItems: [CleanupItem] {
+        eligibleItems.filter {
+            (scope != .aiOverview || $0.category.isAI) &&
+            ((scope ?? .all).category == nil || $0.category == scope?.category)
+        }
+    }
+    var scopeEligibleBytes: Int64 { scopeEligibleItems.reduce(0) { $0 + $1.bytes } }
     var selectedHistoryCount: Int { selectedItems.filter(\.isAIHistory).count }
     var selectedWorktreeCount: Int { selectedItems.filter { $0.category == .aiWorktrees }.count }
     var isAIScope: Bool { scope == .aiOverview || scope?.category?.isAI == true }
@@ -103,11 +110,12 @@ final class AppModel: ObservableObject {
         let running = runningBundleIDs
         let runningTools = AIProcessActivity.runningToolIDs(bundleIdentifiers: running)
         let includeHistory = includeAIHistory
+        let manualReview = manualWorktreeReview
         let categories = isAIScope ? Set(CleanupCategory.allCases.filter(\.isAI)) : nil
         operation = Task {
             do {
                 let value = try await engine.scan(includeAIHistory: includeHistory,
-                    inventoryAIHistory: true, categories: categories,
+                    inventoryAIHistory: true, manualWorktreeReview: manualReview, categories: categories,
                     runningBundleIDs: running, runningAITools: runningTools) { [weak self] value in
                     Task { @MainActor in
                         guard let self, self.isScanning else { return }
@@ -151,13 +159,27 @@ final class AppModel: ObservableObject {
         eligibleOnly = !isAIScope
     }
 
+    func setManualWorktreeReview(_ enabled: Bool) {
+        guard !busy else { return }
+        let rescan = result != nil && isAIScope
+        manualWorktreeReview = enabled
+        result = nil
+        selected.removeAll()
+        focusedID = nil
+        status = "工作副本整理模式已調整，請重新掃描"
+        if rescan { startScan() }
+    }
+
     var cleanupWarning: String {
         var warnings = ["共 \(formatBytes(selectedBytes))，請先結束相關應用程式、AI 工具與建置工作。"]
         if selectedHistoryCount > 0 {
             warnings.append("包含 \(selectedHistoryCount) 筆舊對話／本機歷史，會失去對話上下文或歷史還原能力。")
         }
         if selectedWorktreeCount > 0 {
-            warnings.append("包含 \(selectedWorktreeCount) 個工作副本，會連同 Git 登記移到垃圾桶；舊對話指向的工作路徑可能需要還原。")
+            warnings.append("包含 \(selectedWorktreeCount) 個工作副本，會連同未提交、未追蹤、已忽略檔案及 Git 登記移到垃圾桶。請先停止使用這些工作副本的 AI 工作、終端機與編輯器；舊對話的工作路徑可能需要還原。")
+            if manualWorktreeReview {
+                warnings.append("手動整理可包含近期或未合併的工作。會在原儲存庫建立 Git 保留參照以保護提交；參照會留存，不會自動刪除。還原時須將工作區及 Git 管理目錄一起放回原位置，並保留原儲存庫。")
+            }
         }
         warnings.append("會重新驗證後移到垃圾桶。關聯項目失敗時會嘗試回復；清空垃圾桶後才會釋放磁碟空間。")
         return warnings.joined(separator: "\n\n")
@@ -170,11 +192,12 @@ final class AppModel: ObservableObject {
         let candidates = selectedItems
         let running = runningBundleIDs
         let runningTools = AIProcessActivity.runningToolIDs(bundleIdentifiers: running)
+        let manualReview = manualWorktreeReview
         isCleaning = true
         operation = Task {
             let value = await engine.trash(candidates, runningBundleIDs: running,
                 runningAITools: runningTools, allowAIHistory: confirmedAIHistory,
-                allowAIWorktrees: confirmedAIWorktrees)
+                allowAIWorktrees: confirmedAIWorktrees, manualWorktreeReview: manualReview)
             let movedIDs = Set(value.moved.map { $0.originalURL.path })
             if let old = result {
                 result = ScanResult(items: old.items.filter { !movedIDs.contains($0.id) },
