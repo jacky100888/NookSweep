@@ -2,10 +2,13 @@ import AppKit
 import NookSweepCore
 import SwiftUI
 
+enum DeveloperMode: Hashable {
+    case caches, ai
+}
+
 enum SidebarScope: Hashable {
     case status
     case applications
-    case aiOverview
     case all
     case category(CleanupCategory)
     var category: CleanupCategory? {
@@ -15,7 +18,6 @@ enum SidebarScope: Hashable {
         switch self {
         case .status: "即時狀態"
         case .applications: "軟體移除"
-        case .aiOverview: "AI 工具整理"
         case .all: "智慧清理"
         case .category(let category): category.rawValue
         }
@@ -36,6 +38,8 @@ final class AppModel: ObservableObject {
     @Published var selected = Set<String>()
     @Published var focusedID: String?
     @Published var query = ""
+    @Published private(set) var developerMode: DeveloperMode = .caches
+    @Published var aiCategory: CleanupCategory?
     @Published var historyAgeDays = 0
     @Published var sortOrder = [KeyPathComparator(\CleanupItem.bytes, order: .reverse)]
     @Published var eligibleOnly = true
@@ -53,24 +57,27 @@ final class AppModel: ObservableObject {
     @Published var showDetails = false
     @Published private(set) var includeAIHistory = false
     @Published private(set) var manualWorktreeReview = false
-    private let engine = CleanupEngine()
+    private let engine: CleanupEngine
     private var operation: Task<Void, Never>?
+    private var resultIsAIOnly = false
 
     var busy: Bool { isScanning || isCleaning }
     var items: [CleanupItem] { result?.items ?? [] }
+    var scopedItems: [CleanupItem] {
+        items.filter {
+            (!isAIScope || $0.category.isAI) &&
+            (activeCategory == nil || $0.category == activeCategory)
+        }
+    }
+    var activeCategory: CleanupCategory? { isAIScope ? aiCategory : scope?.category }
     var eligibleItems: [CleanupItem] { items.filter(\.isEligible) }
     var selectedItems: [CleanupItem] { eligibleItems.filter { selected.contains($0.id) } }
     var selectedBytes: Int64 { selectedItems.reduce(0) { $0 + $1.bytes } }
-    var scopeEligibleItems: [CleanupItem] {
-        eligibleItems.filter {
-            (scope != .aiOverview || $0.category.isAI) &&
-            ((scope ?? .all).category == nil || $0.category == scope?.category)
-        }
-    }
+    var scopeEligibleItems: [CleanupItem] { scopedItems.filter(\.isEligible) }
     var scopeEligibleBytes: Int64 { scopeEligibleItems.reduce(0) { $0 + $1.bytes } }
     var selectedHistoryCount: Int { selectedItems.filter(\.isAIHistory).count }
     var selectedWorktreeCount: Int { selectedItems.filter { $0.category == .aiWorktrees }.count }
-    var isAIScope: Bool { scope == .aiOverview || scope?.category?.isAI == true }
+    var isAIScope: Bool { scope?.category == .developer && developerMode == .ai }
     var focusedItem: CleanupItem? { items.first { $0.id == focusedID } }
     var dateSortOrder: SortOrder? {
         sortOrder.first?.keyPath == \CleanupItem.modified ? sortOrder.first?.order : nil
@@ -86,11 +93,9 @@ final class AppModel: ObservableObject {
         return "掃描順序"
     }
     var visibleItems: [CleanupItem] {
-        let cutoff: Date? = scope?.category == .aiHistory && historyAgeDays > 0
+        let cutoff: Date? = isAIScope && activeCategory == .aiHistory && historyAgeDays > 0
             ? (scannedAt ?? Date()).addingTimeInterval(-Double(historyAgeDays) * 86400) : nil
-        let filtered = items.filter { item in
-            (scope != .aiOverview || item.category.isAI) &&
-            ((scope ?? .all).category == nil || item.category == scope?.category) &&
+        let filtered = scopedItems.filter { item in
             (!eligibleOnly || item.isEligible) &&
             (cutoff.map { item.measurementAvailable && item.modified <= $0 } ?? true) &&
             (query.isEmpty || item.url.path.localizedCaseInsensitiveContains(query) ||
@@ -105,7 +110,10 @@ final class AppModel: ObservableObject {
         Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
     }
 
-    init() { refreshDisk() }
+    init(engine: CleanupEngine = CleanupEngine()) {
+        self.engine = engine
+        refreshDisk()
+    }
 
     func refreshDisk() {
         do {
@@ -123,6 +131,7 @@ final class AppModel: ObservableObject {
         selected.removeAll()
         focusedID = nil
         result = nil
+        resultIsAIOnly = false
         scannedAt = nil
         inspectedCount = 0
         progressPath = "準備掃描…"
@@ -132,7 +141,8 @@ final class AppModel: ObservableObject {
         let runningTools = AIProcessActivity.runningToolIDs(bundleIdentifiers: running)
         let includeHistory = includeAIHistory
         let manualReview = manualWorktreeReview
-        let categories = isAIScope ? Set(CleanupCategory.allCases.filter(\.isAI)) : nil
+        let aiOnly = isAIScope
+        let categories = aiOnly ? Set(CleanupCategory.allCases.filter(\.isAI)) : nil
         operation = Task {
             do {
                 let value = try await engine.scan(includeAIHistory: includeHistory,
@@ -144,10 +154,15 @@ final class AppModel: ObservableObject {
                         self.inspectedCount = value.fileCount
                     }
                 }
-                result = value
-                inspectedCount = value.inspectedCount
-                scannedAt = Date()
-                status = "掃描完成 · \(value.inspectedCount.formatted()) 個檔案"
+                if aiOnly && !isAIScope {
+                    status = "已切換清理範圍，請重新掃描"
+                } else {
+                    result = value
+                    resultIsAIOnly = aiOnly
+                    inspectedCount = value.inspectedCount
+                    scannedAt = Date()
+                    status = "掃描完成 · \(value.inspectedCount.formatted()) 個檔案"
+                }
             } catch is CancellationError {
                 status = "已取消掃描，可隨時重新開始"
             } catch { status = "掃描失敗：\(error.localizedDescription)" }
@@ -172,6 +187,21 @@ final class AppModel: ObservableObject {
         sortOrder = [KeyPathComparator(\CleanupItem.bytes, order: ascending ? .forward : .reverse)]
     }
 
+    func setDeveloperMode(_ mode: DeveloperMode) {
+        guard !busy, developerMode != mode else { return }
+        let rescan = result != nil
+        developerMode = mode
+        result = nil
+        resultIsAIOnly = false
+        selected.removeAll()
+        focusedID = nil
+        scannedAt = nil
+        showDetails = false
+        eligibleOnly = !isAIScope
+        status = "已切換清理範圍，請重新掃描"
+        if rescan { startScan() }
+    }
+
     func setIncludeAIHistory(_ enabled: Bool) {
         guard !busy else { return }
         let rescan = result != nil && isAIScope
@@ -187,6 +217,13 @@ final class AppModel: ObservableObject {
         focusedID = nil
         showDetails = false
         eligibleOnly = !isAIScope
+        if resultIsAIOnly && !isAIScope {
+            result = nil
+            resultIsAIOnly = false
+            selected.removeAll()
+            scannedAt = nil
+            status = "已切換清理範圍，請重新掃描"
+        }
     }
 
     func setManualWorktreeReview(_ enabled: Bool) {

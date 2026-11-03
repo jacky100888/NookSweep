@@ -18,6 +18,22 @@ struct ContentView: View {
             } else {
             VStack(spacing: 0) {
                 header
+                if model.scope?.category == .developer {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Picker("開發工具分類", selection: Binding(
+                            get: { model.developerMode }, set: { model.setDeveloperMode($0) }
+                        )) {
+                            Text("一般快取").tag(DeveloperMode.caches)
+                            Text("AI 工具清理").tag(DeveloperMode.ai)
+                        }
+                        .pickerStyle(.segmented).frame(maxWidth: 360).disabled(model.busy)
+                        .accessibilityLabel("開發工具分類")
+                        Text("切換類別會重新掃描，並取消目前選取。")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 28).padding(.bottom, 16)
+                }
                 Divider()
                 if model.isScanning { scanning }
                 else if model.result == nil { welcome }

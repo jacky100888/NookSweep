@@ -29,25 +29,9 @@ struct SidebarView: View {
                             .tag(SidebarScope.category(category))
                     }
                 }
-                Section("AI 工具") {
-                    Label("AI 工具整理", systemImage: "sparkles").tag(SidebarScope.aiOverview)
-                    ForEach(CleanupCategory.allCases.filter { $0.isAI && $0 != .aiCaches }) { category in
-                        Label(category.rawValue, systemImage: category.symbol).tag(SidebarScope.category(category))
-                    }
-                }
             }
             .listStyle(.sidebar)
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("允許整理舊對話／歷史", isOn: Binding(
-                    get: { model.includeAIHistory }, set: { model.setIncludeAIHistory($0) }
-                ))
-                .toggleStyle(.checkbox).font(.caption).disabled(model.busy)
-                Text(model.includeAIHistory
-                    ? "僅能整理至少閒置 30 天的已知歷史，操作前另行確認。"
-                    : "對話仍會列出，預設保留並顯示原因。")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Divider()
                 Label("這部 Mac", systemImage: "internaldrive").font(.subheadline.weight(.medium))
                 if let disk = model.disk {
                     ProgressView(value: disk.fraction).tint(.secondary)

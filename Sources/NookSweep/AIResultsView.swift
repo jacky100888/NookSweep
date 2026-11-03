@@ -6,7 +6,7 @@ struct AIResultsView: View {
     @ObservedObject var model: AppModel
 
     private var inventory: [CleanupItem] {
-        model.items.filter { $0.category.isAI && (model.scope?.category == nil || $0.category == model.scope?.category) }
+        model.scopedItems
     }
     private var visible: [CleanupItem] { model.visibleItems.filter { $0.category.isAI } }
     private var selectableCount: Int { visible.filter(\.isEligible).count }
@@ -23,13 +23,31 @@ struct AIResultsView: View {
                     .font(.subheadline).monospacedDigit()
                 Text("統計包含目前範圍的全部項目，搜尋與篩選僅影響列表。")
                     .font(.caption).foregroundStyle(.secondary)
+                Picker("資料類型", selection: $model.aiCategory) {
+                    Text("全部資料").tag(CleanupCategory?.none)
+                    Text("快取與暫存").tag(CleanupCategory?.some(.aiCaches))
+                    Text("對話與本機歷史").tag(CleanupCategory?.some(.aiHistory))
+                    Text("舊版本").tag(CleanupCategory?.some(.aiVersions))
+                    Text("工作副本").tag(CleanupCategory?.some(.aiWorktrees))
+                }
+                .fixedSize().accessibilityLabel("AI 資料類型")
+                if model.aiCategory == nil || model.aiCategory == .aiHistory {
+                    Toggle("允許整理舊對話／歷史", isOn: Binding(
+                        get: { model.includeAIHistory }, set: { model.setIncludeAIHistory($0) }
+                    ))
+                    .toggleStyle(.checkbox).font(.caption).disabled(model.busy)
+                    Text(model.includeAIHistory
+                        ? "僅能整理至少閒置 30 天的已知歷史，操作前另行確認。"
+                        : "對話仍會列出，預設保留；索引管理或執行中的資料也會保留。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 HStack(spacing: 16) {
                     TextField("搜尋 AI 資料路徑", text: $model.query)
                         .textFieldStyle(.roundedBorder).accessibilityLabel("搜尋 AI 資料路徑")
                     Toggle("只顯示可整理", isOn: $model.eligibleOnly)
                         .toggleStyle(.checkbox).font(.caption).fixedSize()
                 }
-                if model.scope?.category == .aiHistory {
+                if model.aiCategory == .aiHistory {
                     HStack(spacing: 12) {
                         Picker("日期篩選", selection: $model.historyAgeDays) {
                             Text("全部日期").tag(0)
@@ -56,11 +74,7 @@ struct AIResultsView: View {
                     Text("顯示 \(visible.count.formatted()) 項 · 已選 \(model.selectedItems.count.formatted()) 項")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                if model.scope?.category == .aiHistory, !model.includeAIHistory {
-                    Text("先開啟左側「允許整理舊對話／歷史」，才可選取至少閒置 30 天的已知歷史。索引管理或執行中的資料仍會保留。")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                if model.scope == .aiOverview || model.scope?.category == .aiWorktrees {
+                if model.aiCategory == nil || model.aiCategory == .aiWorktrees {
                     Toggle("手動整理工作副本（包含近期、未提交或未合併內容）", isOn: Binding(
                         get: { model.manualWorktreeReview }, set: { model.setManualWorktreeReview($0) }))
                         .toggleStyle(.checkbox).font(.caption)
@@ -76,7 +90,7 @@ struct AIResultsView: View {
                 ContentUnavailableView("目前沒有符合條件的 AI 資料", systemImage: "sparkles",
                     description: Text(inventory.isEmpty
                         ? "目前範圍沒有偵測到已知格式的 AI 資料。"
-                        : model.scope?.category == .aiHistory
+                        : model.aiCategory == .aiHistory
                             ? "可調整日期篩選、清除搜尋文字，或取消「只顯示可整理」查看保留原因。"
                             : "可清除搜尋文字，或取消「只顯示可整理」查看保留原因。"))
             } else {

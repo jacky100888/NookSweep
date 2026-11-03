@@ -18,9 +18,13 @@ private func listItem(_ name: String, age: TimeInterval, bytes: Int64 = 1024,
 }
 
 @MainActor
-private func listModel(_ items: [CleanupItem], scope: SidebarScope = .category(.aiHistory)) -> AppModel {
-    let model = AppModel()
-    model.scope = scope
+private func listModel(_ items: [CleanupItem]) -> AppModel {
+    let home = FileManager.default.temporaryDirectory.appendingPathComponent("NookSweep-List-" + UUID().uuidString)
+    let model = AppModel(engine: CleanupEngine(home: home, activity: { [] },
+        trashOperation: { _ in throw CleanupError.refused("測試禁止搬移") }))
+    model.scope = .category(.developer)
+    model.setDeveloperMode(.ai)
+    model.aiCategory = .aiHistory
     model.eligibleOnly = false
     model.scannedAt = listReferenceDate
     model.result = ScanResult(items: items, warnings: [], inspectedCount: items.count)
@@ -63,8 +67,7 @@ private func listModel(_ items: [CleanupItem], scope: SidebarScope = .category(.
     let model = listModel([history, old, cache, ordinary])
     model.historyAgeDays = 60
     #expect(model.visibleItems.map(\.id) == [old.id])
-    model.scope = .aiOverview
-    model.scopeDidChange()
+    model.aiCategory = nil
     #expect(Set(model.visibleItems.map(\.id)) == [history.id, old.id, cache.id])
     model.scope = .all
     model.scopeDidChange()
