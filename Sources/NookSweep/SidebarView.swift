@@ -31,7 +31,7 @@ struct SidebarView: View {
                 }
                 Section("AI 工具") {
                     Label("AI 工具整理", systemImage: "sparkles").tag(SidebarScope.aiOverview)
-                    ForEach(CleanupCategory.allCases.filter(\.isAI)) { category in
+                    ForEach(CleanupCategory.allCases.filter { $0.isAI && $0 != .aiCaches }) { category in
                         Label(category.rawValue, systemImage: category.symbol).tag(SidebarScope.category(category))
                     }
                 }

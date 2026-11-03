@@ -32,7 +32,7 @@ struct ResultsView: View {
                          : "試著清除搜尋文字或切換清理分類。")
                 }
             } else {
-                Table(model.visibleItems, selection: $model.focusedID) {
+                Table(model.visibleItems, selection: $model.focusedID, sortOrder: $model.sortOrder) {
                     TableColumn("") { item in
                         Toggle("選取 \(item.name)", isOn: Binding(
                             get: { model.selected.contains(item.id) },
@@ -62,19 +62,24 @@ struct ResultsView: View {
                             }
                         }
                     }.width(min: 160, ideal: 300)
-                    TableColumn("大小") { item in
+                    TableColumn("大小", value: \.bytes) { item in
                         Text(item.measurementAvailable ? formatBytes(item.bytes) : "—").monospacedDigit()
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }.width(90)
-                    TableColumn("最近修改") { item in
-                        Text(item.modified, format: .dateTime.year().month().day())
-                            .foregroundStyle(.secondary)
-                    }.width(100)
+                    TableColumn("最近修改", value: \.modified) { item in
+                        Group {
+                            if item.measurementAvailable {
+                                Text(item.modified, format: .dateTime.year().month().day())
+                            } else {
+                                Text("未取得")
+                            }
+                        }.foregroundStyle(.secondary).monospacedDigit()
+                    }.width(140)
                 }
                 .tableStyle(.inset(alternatesRowBackgrounds: true))
             }
             HStack {
-                Text("顯示 \(model.visibleItems.count) 項 · 大小由大到小")
+                Text("顯示 \(model.visibleItems.count) 項 · \(model.sortDescription)")
                 Spacer()
                 Text("已選取 \(model.selectedItems.count) 項")
             }

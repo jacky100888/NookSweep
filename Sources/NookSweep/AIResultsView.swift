@@ -29,6 +29,20 @@ struct AIResultsView: View {
                     Toggle("只顯示可整理", isOn: $model.eligibleOnly)
                         .toggleStyle(.checkbox).font(.caption).fixedSize()
                 }
+                if model.scope?.category == .aiHistory {
+                    HStack(spacing: 12) {
+                        Picker("日期篩選", selection: $model.historyAgeDays) {
+                            Text("全部日期").tag(0)
+                            Text("15 天以前").tag(15)
+                            Text("30 天以前").tag(30)
+                            Text("60 天以前").tag(60)
+                        }
+                        .fixedSize().accessibilityLabel("舊對話日期篩選")
+                        Text("依最近修改時間篩選，已選項目保留。")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Spacer(minLength: 0)
+                    }
+                }
                 HStack {
                     Button("全選可整理 · \(selectableCount.formatted()) 項", systemImage: "checklist") {
                         model.selectVisible()
@@ -43,7 +57,7 @@ struct AIResultsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if model.scope?.category == .aiHistory, !model.includeAIHistory {
-                    Text("先開啟左側「允許整理舊對話／歷史」，即可全選可整理的舊對話。索引管理或執行中的資料仍會保留。")
+                    Text("先開啟左側「允許整理舊對話／歷史」，才可選取至少閒置 30 天的已知歷史。索引管理或執行中的資料仍會保留。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if model.scope == .aiOverview || model.scope?.category == .aiWorktrees {
@@ -62,9 +76,12 @@ struct AIResultsView: View {
                 ContentUnavailableView("目前沒有符合條件的 AI 資料", systemImage: "sparkles",
                     description: Text(inventory.isEmpty
                         ? "目前範圍沒有偵測到已知格式的 AI 資料。"
-                        : "可清除搜尋文字，或取消「只顯示可整理」查看保留原因。"))
+                        : model.scope?.category == .aiHistory
+                            ? "可調整日期篩選、清除搜尋文字，或取消「只顯示可整理」查看保留原因。"
+                            : "可清除搜尋文字，或取消「只顯示可整理」查看保留原因。"))
             } else {
                 List(selection: $model.focusedID) {
+                    columnHeaders.listRowSeparator(.hidden)
                     ForEach(tools, id: \.self) { tool in
                         Section {
                             ForEach(AIDataKind.allCases, id: \.self) { kind in
@@ -89,6 +106,35 @@ struct AIResultsView: View {
             }
         }
         .disabled(model.isCleaning)
+    }
+
+    private var columnHeaders: some View {
+        HStack(spacing: 10) {
+            Text("群組內排序").foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            Button(action: model.sortByDate) {
+                HStack(spacing: 4) {
+                    Text("最近修改")
+                    Image(systemName: model.dateSortOrder.map { $0 == .forward ? "chevron.up" : "chevron.down" }
+                        ?? "arrow.up.arrow.down")
+                }.frame(width: 112, height: 24, alignment: .leading).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).accessibilityLabel("依最近修改排序")
+            .accessibilityValue(model.dateSortOrder == nil ? "未使用日期排序" : model.sortDescription)
+            .help("在各工具與類型群組內切換由舊到新／由新到舊")
+            Button(action: model.sortBySize) {
+                HStack(spacing: 4) {
+                    Text("大小")
+                    Image(systemName: model.sortOrder.first?.keyPath == \CleanupItem.bytes
+                        ? (model.sortOrder.first?.order == .forward ? "chevron.up" : "chevron.down")
+                        : "arrow.up.arrow.down")
+                }.frame(width: 90, height: 24, alignment: .trailing).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).accessibilityLabel("依大小排序")
+            .help("在各工具與類型群組內切換大小由大到小／由小到大")
+        }
+        .font(.caption).padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
     }
 
     private func groupLabel(_ title: String, items: [CleanupItem], shown: Int) -> some View {
@@ -122,10 +168,20 @@ struct AIResultsView: View {
                 model.showDetails = true
             } label: {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(item.name).fontWeight(.medium).lineLimit(1)
                         Spacer(minLength: 8)
-                        Text(item.measurementAvailable ? formatBytes(item.bytes) : "無法估算").monospacedDigit().fixedSize()
+                        Group {
+                            if item.measurementAvailable {
+                                Text(item.modified, format: .dateTime.year().month().day())
+                            } else {
+                                Text("未取得")
+                            }
+                        }
+                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                        .frame(width: 112, alignment: .leading)
+                        Text(item.measurementAvailable ? formatBytes(item.bytes) : "無法估算").monospacedDigit()
+                            .frame(width: 90, alignment: .trailing)
                     }
                     Text("\(item.fileCount.formatted()) 個檔案 · \(item.state.reason ?? "可整理")")
                         .font(.caption).foregroundStyle(.secondary).lineLimit(2)

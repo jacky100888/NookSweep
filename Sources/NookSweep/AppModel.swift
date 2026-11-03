@@ -36,6 +36,8 @@ final class AppModel: ObservableObject {
     @Published var selected = Set<String>()
     @Published var focusedID: String?
     @Published var query = ""
+    @Published var historyAgeDays = 0
+    @Published var sortOrder = [KeyPathComparator(\CleanupItem.bytes, order: .reverse)]
     @Published var eligibleOnly = true
     @Published var isScanning = false
     @Published var isCleaning = false
@@ -70,15 +72,34 @@ final class AppModel: ObservableObject {
     var selectedWorktreeCount: Int { selectedItems.filter { $0.category == .aiWorktrees }.count }
     var isAIScope: Bool { scope == .aiOverview || scope?.category?.isAI == true }
     var focusedItem: CleanupItem? { items.first { $0.id == focusedID } }
-    var visibleItems: [CleanupItem] {
-        items.filter {
-            (scope != .aiOverview || $0.category.isAI) &&
-            ((scope ?? .all).category == nil || $0.category == scope?.category) &&
-            (!eligibleOnly || $0.isEligible) &&
-            (query.isEmpty || $0.url.path.localizedCaseInsensitiveContains(query) ||
-                $0.name.localizedCaseInsensitiveContains(query) ||
-                $0.aiToolName?.localizedCaseInsensitiveContains(query) == true)
+    var dateSortOrder: SortOrder? {
+        sortOrder.first?.keyPath == \CleanupItem.modified ? sortOrder.first?.order : nil
+    }
+    var sortDescription: String {
+        guard let first = sortOrder.first else { return "掃描順序" }
+        if first.keyPath == \CleanupItem.modified {
+            return first.order == .forward ? "最近修改由舊到新" : "最近修改由新到舊"
         }
+        if first.keyPath == \CleanupItem.bytes {
+            return first.order == .reverse ? "大小由大到小" : "大小由小到大"
+        }
+        return "掃描順序"
+    }
+    var visibleItems: [CleanupItem] {
+        let cutoff: Date? = scope?.category == .aiHistory && historyAgeDays > 0
+            ? (scannedAt ?? Date()).addingTimeInterval(-Double(historyAgeDays) * 86400) : nil
+        let filtered = items.filter { item in
+            (scope != .aiOverview || item.category.isAI) &&
+            ((scope ?? .all).category == nil || item.category == scope?.category) &&
+            (!eligibleOnly || item.isEligible) &&
+            (cutoff.map { item.measurementAvailable && item.modified <= $0 } ?? true) &&
+            (query.isEmpty || item.url.path.localizedCaseInsensitiveContains(query) ||
+             item.name.localizedCaseInsensitiveContains(query) ||
+             item.aiToolName?.localizedCaseInsensitiveContains(query) == true)
+        }
+        let sorted = filtered.sorted(using: sortOrder + [KeyPathComparator(\CleanupItem.id)])
+        return dateSortOrder == nil ? sorted :
+            sorted.filter(\.measurementAvailable) + sorted.filter { !$0.measurementAvailable }
     }
     var runningBundleIDs: Set<String> {
         Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
@@ -140,6 +161,15 @@ final class AppModel: ObservableObject {
 
     func selectVisible() {
         selected.formUnion(visibleItems.filter(\.isEligible).map(\.id))
+    }
+
+    func sortByDate() {
+        sortOrder = [KeyPathComparator(\CleanupItem.modified, order: dateSortOrder == .forward ? .reverse : .forward)]
+    }
+
+    func sortBySize() {
+        let ascending = sortOrder.first?.keyPath == \CleanupItem.bytes && sortOrder.first?.order == .reverse
+        sortOrder = [KeyPathComparator(\CleanupItem.bytes, order: ascending ? .forward : .reverse)]
     }
 
     func setIncludeAIHistory(_ enabled: Bool) {

@@ -8,6 +8,7 @@ let package = Package(
     targets: [
         .target(name: "NookSweepCore"),
         .executableTarget(name: "NookSweep", dependencies: ["NookSweepCore"]),
-        .testTarget(name: "NookSweepCoreTests", dependencies: ["NookSweepCore"])
+        .testTarget(name: "NookSweepCoreTests", dependencies: ["NookSweepCore"]),
+        .testTarget(name: "NookSweepAppTests", dependencies: ["NookSweep", "NookSweepCore"])
     ]
 )
