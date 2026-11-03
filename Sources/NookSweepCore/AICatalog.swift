@@ -8,6 +8,7 @@ extension CleanupEngine {
         }
         let providers: [(String, () throws -> [AICatalogEntry])] = [
             ("AI 快取", { try AICacheCatalog.candidates(home: self.home) }),
+            ("OpenCode", { try OpenCodeCatalog.candidates(home: self.home) }),
             ("Claude 版本", { try ClaudeVersionCatalog.candidates(home: self.home) }),
             ("本機歷史", { try AILegacyHistoryCatalog.candidates(home: self.home) }),
             ("工作副本", { try AIWorktreeCatalog.candidates(home: self.home, manualWorktreeReview: manualWorktreeReview) })
@@ -25,6 +26,7 @@ extension CleanupEngine {
     func catalogEntry(for url: URL, manualWorktreeReview: Bool = false) throws -> AICatalogEntry? {
         guard url.standardizedFileURL.pathComponents.starts(with: home.pathComponents) else { return nil }
         if let result = try AICacheCatalog.entry(for: url, home: home) { return result }
+        if let result = try OpenCodeCatalog.entry(for: url, home: home) { return result }
         if let result = try ClaudeVersionCatalog.entry(for: url, home: home) { return result }
         if let result = try AILegacyHistoryCatalog.entry(for: url, home: home) { return result }
         return try AIWorktreeCatalog.entry(for: url, home: home, manualWorktreeReview: manualWorktreeReview)

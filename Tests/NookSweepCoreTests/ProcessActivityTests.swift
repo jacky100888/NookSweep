@@ -18,3 +18,13 @@ import Testing
     #expect(AIProcessActivity.toolID(processName: "2.1.218",
         executablePath: "/tmp/test-home/share/claude/versions/2.1.218") == nil)
 }
+
+@Test func opencodeDesktopServiceProcessesAreRecognized() {
+    #expect(AIProcessActivity.toolID(processName: "opencode-cli", executablePath: "") == "opencode")
+    #expect(AIProcessActivity.toolID(processName: "opencode-cli",
+        executablePath: "/Applications/OpenCode.app/Contents/Resources/opencode-cli") == "opencode")
+    #expect(AIProcessActivity.toolID(processName: "",
+        executablePath: "/tmp/test-home/.opencode/bin/opencode-cli") == "opencode")
+    #expect(AIProcessActivity.toolID(processName: "opencode-helper",
+        executablePath: "/tmp/opencode-cli-backup") == nil)
+}

@@ -64,7 +64,7 @@ public struct CleanupItem: Identifiable, Sendable {
         case "gemini": "Gemini"
         case "chatgpt": "ChatGPT"
         case "cursor": "Cursor"
-        case "opencode": "opencode"
+        case "opencode": "OpenCode"
         default: nil
         }
     }

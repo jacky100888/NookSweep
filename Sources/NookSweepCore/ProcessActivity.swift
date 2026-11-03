@@ -15,7 +15,8 @@ public enum AIProcessActivity {
         if name == "gemini" || components.contains("gemini-cli") { return "gemini" }
         if name == "chatgpt" || components.contains("chatgpt.app") { return "chatgpt" }
         if name == "cursor" || components.contains("cursor.app") { return "cursor" }
-        if name == "opencode" || components.contains("opencode.app") { return "opencode" }
+        if name == "opencode" || name == "opencode-cli" || components.last == "opencode-cli" ||
+           components.contains("opencode.app") { return "opencode" }
         return nil
     }
 
@@ -27,7 +28,9 @@ public enum AIProcessActivity {
             if lower.contains("openai") && lower.contains("codex") { tools.insert("codex") }
             if lower == "com.openai.chat" { tools.insert("chatgpt") }
             if lower == "com.todesktop.230313mzl4w4u92" { tools.insert("cursor") }
-            if lower == "ai.opencode.desktop" { tools.insert("opencode") }
+            if ["ai.opencode.desktop", "ai.opencode.desktop.dev", "ai.opencode.desktop.beta"].contains(lower) {
+                tools.insert("opencode")
+            }
         }
         let capacity = max(0, Int(proc_listallpids(nil, 0))) + 64
         var pids = [Int32](repeating: 0, count: capacity)

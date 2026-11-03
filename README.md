@@ -6,7 +6,7 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 
 使用 Swift、Foundation 與 macOS 系統框架，無第三方相依套件，以 [MIT 授權](LICENSE) 開源。
 
-目前版本為 1.3.2（build 8）。
+目前版本為 1.4.0（build 9）。
 
 ## 功能
 
@@ -42,7 +42,7 @@ NookSweep 是以 SwiftUI 製作的 macOS 清理與狀態監測工具。先查看
 | 應用程式快取 | `~/Library/Caches` 的直接子項目 | 7 天 |
 | 舊記錄檔 | `~/Library/Logs` 的直接子項目 | 30 天 |
 | 開發工具快取 | Xcode DerivedData、npm、pip、uv、Gradle 的明確快取目錄 | 7 天 |
-| AI 工具暫存 | Codex、Claude、Gemini 的明確暫存與記錄目錄，以及 Codex、Claude、Cursor、ChatGPT 等已辨識的 App 快取葉節點 | 7 天 |
+| AI 工具暫存 | Codex、Claude、Gemini、OpenCode 的明確快取與記錄檔，以及 Codex、Claude、Cursor、ChatGPT 等已辨識的 App 快取葉節點 | 7 天 |
 | 對話與本機歷史 | 已知對話檔案與 Cursor 本機歷史；預設列出並保留，開啟允許整理後才可選取 | 30 天 |
 | AI 工具版本 | 已確認早於目前使用版本的 Claude Code 版本檔 | 7 天 |
 | AI 工作副本 | 通過 Git 路徑與登記驗證的 Codex linked worktree；預設須乾淨且已合併，手動整理可放寬內容狀態 | 預設 7 天；手動整理可略過 |
@@ -63,9 +63,22 @@ App 快取只接受已確認的 `Cache`、`Code Cache`、`GPUCache` 與 Service 
 - Gemini CLI：`~/.gemini/tmp/<project>/chats/session-*.json`。
 - Codex：列出 sessions 與 archived sessions 的 `.jsonl`／`.jsonl.zst`，不解壓縮對話正文。紀錄受資料庫索引管理，全部保留並禁止清理；全選與允許整理歷史也不會選取。請由 Codex 管理，官方永久刪除操作不納入本工具的垃圾桶流程；封存只改變紀錄位置，不會釋放對話檔案空間。
 - Cursor：只列出 `~/Library/Application Support/Cursor/User/History/<hash>` 的本機歷史 record；每個 record 整組處理，必要時只讀 `entries.json` 取得原檔名，不影響工作區原始檔或聊天。
-- opencode：舊式 `storage/session/<project>/ses_*.json` 會連同對應的 message、part、session_diff 與 todo 分組。新版資料庫僅列出並保留；資料庫與舊紀錄並存、session 命名空間含連結、識別碼重複或布局未知時，舊紀錄也保留。
+- OpenCode：舊式 `storage/session/<project>/ses_*.json` 會連同對應的 message、part、session_diff 與 todo 分組。新版資料庫僅列出並保留；資料庫與舊紀錄並存、session 命名空間含連結、識別碼重複或布局未知時，舊紀錄也保留。
 
 舊對話與本機歷史無法重新產生，移除後可能失去聊天內容、接續工作的上下文或檔案快照。AI 對話與快取整理不以設定、登入憑證、skills、rules、記憶、專案原始碼及 SQLite 主檔／WAL／SHM 作為清理目標；使用者選定的工作副本則依下方規則，連同其專屬 Git 管理目錄整組移到垃圾桶，不搬移原儲存庫。
+
+### OpenCode 快取與資料
+
+支援 CLI 預設的使用者資料位置，沿用 7 天閒置門檻與清理前重新驗證。可辨識的 OpenCode 執行中時，包含桌面版的 `opencode-cli` 背景服務，相關快取會保留。
+
+- `~/.cache/opencode/models.json`：可重新下載的模型清單。其他直接子項會列出並保留，包含工具安裝、外掛相依套件、manifest 與 `version`；單獨移除這些內容可能破壞外掛安裝狀態或觸發整個快取重建。
+- `~/.local/share/opencode/log`：逐一列出舊版時間戳／`dev.log` 與新版 `opencode.log`／`opencode-<channel>.log`。未知檔名與子目錄保留。
+- `~/.local/share/opencode/tool-output`：逐一列出已知 `tool_` 識別碼格式的一般檔案。逾期輸出可能包含工具回覆內容，移除後無法再次讀取這份完整輸出；未知格式保留。
+- `~/.local/share/opencode/snapshot` 與 `repos`：分別列為檔案復原快照及受管理的儲存庫／工作副本，全部保留。開啟舊對話整理、手動工作副本整理或全選也不會選取。
+
+設定、登入憑證、state、shell、對話資料庫與 WAL／SHM 不作為快取清理目標。這次不掃描自訂 XDG 位置或桌面版獨有快取路徑。
+
+路徑與格式依官方固定版本確認：[模型清單快取](https://github.com/anomalyco/opencode/blob/v1.1.14/packages/opencode/src/provider/models.ts)、[工具輸出與保留期](https://github.com/anomalyco/opencode/blob/v2.0.24/packages/core/src/tool-output.ts)、[檔案復原快照](https://github.com/anomalyco/opencode/blob/v2.0.24/packages/core/src/snapshot.ts)。
 
 ### AI 工具版本與工作副本
 
