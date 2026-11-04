@@ -36,11 +36,12 @@ private func populateNavigationHome(_ home: URL) throws {
 
 @MainActor
 private func awaitNavigationScan(_ model: AppModel) async throws {
-    let deadline = Date().addingTimeInterval(10)
+    // CI 併行測試可能延後掃描完成；此處等待完成，不驗證效能。
+    let deadline = Date().addingTimeInterval(60)
     while model.isScanning && Date() < deadline {
         try await Task.sleep(nanoseconds: 10_000_000)
     }
-    try #require(!model.isScanning, "測試掃描未於十秒內完成")
+    try #require(!model.isScanning, "測試掃描未於一分鐘內完成")
 }
 
 @Test @MainActor func developerAndAIFiltersKeepListTotalsAndSelectionsConsistent() {
