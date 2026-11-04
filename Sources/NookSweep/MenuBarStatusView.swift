@@ -4,6 +4,8 @@ import SwiftUI
 
 struct MenuBarStatusView: View {
     @ObservedObject var model: StatusModel
+    @ObservedObject var updates: AppUpdateModel
+    @ObservedObject var help: HelpModel
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -52,8 +54,22 @@ struct MenuBarStatusView: View {
                 Button { model.refresh() } label: { Label("更新", systemImage: "arrow.clockwise") }
                     .disabled(model.isRefreshing)
             }
-            Text(model.isPaused ? "監測已暫停" : "每 2 秒更新 · 全部資料留在本機")
+            Text(model.isPaused ? "監測已暫停" : "每 2 秒更新 · 監測資料留在本機")
                 .font(.caption2).foregroundStyle(.secondary)
+            UpdateNoticeView(model: updates)
+            HStack {
+                Button("使用說明") {
+                    openWindow(id: "help")
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                }
+                Spacer()
+                Button("檢查更新…") {
+                    help.topic = .updates
+                    openWindow(id: "help")
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    updates.checkForUpdates()
+                }.disabled(updates.isChecking)
+            }.font(.caption)
             Button("開啟主視窗", systemImage: "macwindow") {
                 openWindow(id: "main")
                 NSApplication.shared.activate(ignoringOtherApps: true)
@@ -61,6 +77,10 @@ struct MenuBarStatusView: View {
             Button("結束 NookSweep") { NSApplication.shared.terminate(nil) }
                 .font(.caption).frame(maxWidth: .infinity)
         }.padding(20).frame(width: 330)
+            .task { updates.checkForUpdates(automatic: true) }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                updates.checkForUpdates(automatic: true)
+            }
     }
 
     private func metric(_ title: String, value: String) -> some View {

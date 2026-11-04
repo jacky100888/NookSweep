@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @ObservedObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +48,8 @@ struct SidebarView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Text("快取閒置 7 天、記錄檔 30 天後才可清理。")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Button("使用說明", systemImage: "questionmark.circle") { openWindow(id: "help") }
+                    .buttonStyle(.borderless).font(.caption)
             }
             .padding(20)
         }

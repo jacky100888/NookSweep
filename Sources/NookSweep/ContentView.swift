@@ -1,3 +1,4 @@
+import AppKit
 import NookSweepCore
 import SwiftUI
 
@@ -5,6 +6,7 @@ struct ContentView: View {
     @StateObject private var model = AppModel()
     @StateObject private var applications = ApplicationsModel(automaticallyScans: false)
     @ObservedObject var monitor: StatusModel
+    @ObservedObject var updates: AppUpdateModel
 
     var body: some View {
         NavigationSplitView {
@@ -66,6 +68,11 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 980, minHeight: 640)
+        .safeAreaInset(edge: .top, spacing: 0) { UpdateNoticeView(model: updates) }
+        .task { updates.checkForUpdates(automatic: true) }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            updates.checkForUpdates(automatic: true)
+        }
         .onChange(of: model.focusedID) { _, value in
             if value != nil { model.showDetails = true }
         }
