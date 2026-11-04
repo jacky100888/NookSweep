@@ -17,12 +17,12 @@ struct ApplicationsReportView: View {
                     if report.results.contains(where: \.needsPermissionHelp) {
                         let applicationURL = Bundle.main.bundleURL
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("macOS 權限不足")
+                            Text("上次移除遭系統拒絕")
                                 .font(.subheadline.weight(.semibold))
-                            Text("可在 Finder 選取被拒絕的項目後按 ⌘⌫，依系統提示驗證管理員身分。也可到「系統設定 → 隱私權與安全性 → App 管理」允許 NookSweep。")
+                            Text("這是上次操作結果，不代表「App 管理」目前未開啟。該開關不會授予管理員身分；檔案擁有者、存取權限或系統保護也可能造成拒絕。")
                                 .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Text("若未列出，按「＋」，在選取視窗按 ⌘⇧G，貼上以下完整路徑並選取 NookSweep.app。")
+                            Text("若尚未允許 NookSweep，請至「App 管理」設定；未列出時按「＋」，再按 ⌘⇧G 貼上以下路徑。")
                                 .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
                             Text(applicationURL.path)
@@ -40,7 +40,7 @@ struct ApplicationsReportView: View {
                                 }
                             }
                             .font(.caption)
-                            Text("App 仍在原位置時，調整權限後可重新掃描；App 已移除時，請用下方 Finder 按鈕處理保留資料。若仍被拒絕，請使用該 App 的官方移除程式。")
+                            Text("授權變更後，請先重新掃描再重試。若仍被拒絕，可在 Finder 選取項目後按 ⌘⌫，依系統提示驗證管理員身分。VPN、防毒或含系統服務的 App 請使用官方移除程式；App 已移除時，請用下方 Finder 按鈕處理保留資料。")
                                 .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
