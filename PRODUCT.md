@@ -8,13 +8,15 @@ product
 
 macOS 14 以上的原生桌面工具，用來查看系統狀態，並預覽、選取與整理可清理的本機資料。
 
-本版為 1.8.0（build 14）。
+本版為 1.8.1（build 15）。
 
 以單一 Universal2 App ZIP 同時提供 `arm64` 與 `x86_64`，支援 Apple Silicon（M 系列）與 Intel Mac，兩種架構最低皆為 macOS 14。建置預設分別指定兩種架構的 `--triple`，再以 `lipo` 合併並逐一驗證架構，使用 ad hoc 簽署及全架構驗簽。
 
 CI 設定為標準 `macos-15`（arm64）與 `macos-15-intel`（x86_64）矩陣，分別執行原生測試，每個 job 都建置及檢查 Universal2 App；artifact 名稱依驗證主機區分，產物均為通用版。CI 實際結果以 Actions 紀錄為準，不以跨架構編譯代替原生測試；Intel GUI、Intel 電池硬體與 macOS 14 實機仍待個別驗證。App 尚未經 Apple Developer ID 簽署或公證。
 
 ## 本版設計決策
+
+軟體移除先使用 `NSWorkspace.recycle`，只有權限失敗時才以固定 Finder Apple Event 請 Finder 處理同一個已確認項目。URL 以型別化 descriptor 傳遞，不插入腳本或 Shell；Finder 必要時顯示系統驗證，首次可能需要使用者允許自動化控制 Finder。每次只處理一個已驗證 URL，非同步等待不阻塞主視窗；依系統回傳位置確認成功，App 未移除時保留相關資料。保留既有路徑、指紋與執行狀態驗證，權限失敗附上 NSError 來源、代碼及底層錯誤；拒絕 Finder 控制時提供自動化設定指引，不更改檔案權限或安裝常駐管理員服務。
 
 原生使用說明採獨立視窗，以主題側欄與可捲動內容呈現開始使用、快取與 AI、軟體移除、權限與還原、即時狀態、更新與版本。側欄、選單列與輔助說明選單皆能開啟，不再交由外部程式閱讀 README。
 

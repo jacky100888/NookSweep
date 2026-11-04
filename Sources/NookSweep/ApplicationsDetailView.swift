@@ -53,10 +53,10 @@ struct ApplicationsDetailView: View {
                     if model.isRemoving {
                         HStack {
                             ProgressView().controlSize(.small)
-                            Text("正在結束 App、重新驗證並移到垃圾桶…").font(.caption)
+                            Text("正在等待系統搬移，請留意可能出現的驗證視窗…").font(.caption)
                         }
                     }
-                    Text("執行中的 App 可選擇結束或強制結束後移除；強制結束會遺失未儲存內容。權限不足時會提供 Finder 與 App 管理設定指引；垃圾桶可供復原。")
+                    Text("執行中的 App 可選擇結束或強制結束後移除；強制結束會遺失未儲存內容。移除會交由系統處理，可能要求驗證；若遭拒絕會保留項目並顯示錯誤碼。垃圾桶可供復原。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(24).frame(maxWidth: .infinity, alignment: .leading)

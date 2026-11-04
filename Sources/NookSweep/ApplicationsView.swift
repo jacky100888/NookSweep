@@ -68,7 +68,8 @@ struct ApplicationsView: View {
                 ? "只會移除 App。相關資料會保留，您可從垃圾桶放回 App。"
                  : "同時移除您勾選的 \(model.selectedRelatedItems.count) 項相關資料，可能包含設定、登入狀態與使用者內容。取回時需從垃圾桶放回原路徑。") +
                  (model.selectedApplication?.isRunning == true
-                    ? "\n\n會先結束 App，確認停止後再移除。強制結束會遺失未儲存的內容；無法停止時會保留 App 與相關資料。" : ""))
+                    ? "\n\n會先結束 App，確認停止後再移除。強制結束會遺失未儲存的內容；無法停止時會保留 App 與相關資料。" : "") +
+                 "\n\n受限項目會請 Finder 處理，首次可能要求允許控制 Finder；若系統要求管理員驗證，請完成或取消。App 未移除時，相關資料會保留。")
         }
     }
 

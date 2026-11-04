@@ -54,6 +54,7 @@ enum HelpTopic: String, CaseIterable, Identifiable {
         case .applications:
             [HelpSection(title: "預覽與相關資料", body: "掃描 /Applications 與個人 Applications，包含一層子資料夾。選取 App 後可查看名稱、版本、大小與路徑。相關資料可能包含設定、登入狀態與使用者內容，預設全部保留，請確認備份後再選填。"),
              HelpSection(title: "執行中的 App", body: "可在確認視窗選「結束並移到垃圾桶」或「強制結束並移到垃圾桶」，不用手動先關閉。強制結束會遺失未儲存內容；無法結束、再次啟動或內容已改變時會保留。Apple 系統 App 與 NookSweep 自身受保護。"),
+             HelpSection(title: "系統搬移與驗證", body: "確認後先嘗試系統搬移，遭權限拒絕時再請 Finder 處理同一個已確認項目。首次可能要求允許 NookSweep 控制 Finder；若拒絕，可在「隱私權與安全性 → 自動化」調整。需要管理員驗證時，請在系統視窗完成或取消；系統仍可拒絕受保護的項目。App 未移除時，選填的相關資料會保留。權限失敗會列出錯誤來源與代碼；NookSweep 不會儲存管理員密碼。"),
              HelpSection(title: "含系統服務的工具", body: "VPN、防毒或含系統服務的 App，應使用官方移除程式處理服務、網路設定與管理員驗證。只移走 App 不等於完整解除安裝；強制結束也不會繞過 macOS 權限。")]
         case .permissions:
             [HelpSection(title: "App 管理與管理員權限不同", body: "「系統設定 → 隱私權與安全性 → App 管理」允許 NookSweep 更新或移除其他 App，但不會授予管理員身分。檔案擁有者、存取權限或系統保護仍可能拒絕操作；可在 Finder 選取項目後按 ⌘⌫，依系統提示驗證，或使用官方移除程式。"),

@@ -68,6 +68,7 @@ public struct ApplicationRemovalResult: Identifiable, Sendable {
     public let bytes: Int64
     public let error: String?
     public let needsPermissionHelp: Bool
+    public let finderAutomationDenied: Bool
     public var succeeded: Bool { trashURL != nil && error == nil }
 }
 
@@ -92,7 +93,8 @@ public actor ApplicationsEngine {
     let ownApplicationURL: URL?
     let activity: @Sendable () async -> ApplicationActivity
     let terminateOperation: @Sendable (URL, ApplicationTerminationMode) async throws -> Void
-    let trashOperation: @Sendable (URL) throws -> URL
+    let trashOperation: @Sendable (URL) async throws -> URL
+    let finderOperation: (@Sendable (URL) async throws -> URL)?
 
     public init(applicationRoots: [URL]? = nil,
                 home: URL = FileManager.default.homeDirectoryForCurrentUser,
@@ -100,7 +102,8 @@ public actor ApplicationsEngine {
                 ownApplicationURL: URL? = Bundle.main.bundleURL,
                 activity: @escaping @Sendable () async -> ApplicationActivity = { await .current() },
                 terminateOperation: (@Sendable (URL, ApplicationTerminationMode) async throws -> Void)? = nil,
-                trashOperation: (@Sendable (URL) throws -> URL)? = nil) {
+                trashOperation: (@Sendable (URL) async throws -> URL)? = nil,
+                finderOperation: (@Sendable (URL) async throws -> URL)? = nil) {
         self.home = home.standardizedFileURL
         self.applicationRoots = (applicationRoots ?? [URL(fileURLWithPath: "/Applications"),
             home.appendingPathComponent("Applications")]).map(\.standardizedFileURL)
@@ -108,13 +111,9 @@ public actor ApplicationsEngine {
         self.ownApplicationURL = ownApplicationURL?.standardizedFileURL
         self.activity = activity
         self.terminateOperation = terminateOperation ?? { try await terminateApplication($0, mode: $1) }
-        self.trashOperation = trashOperation ?? { url in
-            var destination: NSURL?
-            try FileManager.default.trashItem(at: url, resultingItemURL: &destination)
-            guard let destination else {
-                throw CleanupError.refused("系統未回傳垃圾桶位置，請到 Finder 確認")
-            }
-            return destination as URL
-        }
+        self.trashOperation = trashOperation ?? { try await recycleApplication($0) }
+        if let finderOperation { self.finderOperation = finderOperation }
+        else if trashOperation == nil { self.finderOperation = { try await recycleApplicationWithFinder($0) } }
+        else { self.finderOperation = nil }
     }
 }

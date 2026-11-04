@@ -109,7 +109,7 @@ final class ApplicationsModel: ObservableObject {
         isRemoving = true
         errorMessage = nil
         report = nil
-        status = terminationMode == .none ? "正在重新驗證並移到垃圾桶…" : "正在結束 App，完成後重新驗證並移到垃圾桶…"
+        status = terminationMode == .none ? "正在重新驗證並交由系統移到垃圾桶…" : "正在結束 App，完成後重新驗證並交由系統移到垃圾桶…"
         operation = Task { [weak self] in
             guard let self else { return }
             let result = await engine.trash(app, relatedItems: selected, terminationMode: terminationMode)

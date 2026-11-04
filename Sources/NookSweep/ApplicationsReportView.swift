@@ -14,7 +14,22 @@ struct ApplicationsReportView: View {
                 .font(.subheadline.weight(.medium))
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    if report.results.contains(where: \.needsPermissionHelp) {
+                    if report.results.contains(where: \.finderAutomationDenied) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("上次 Finder 控制遭系統拒絕").font(.subheadline.weight(.semibold))
+                            Text("這是上次操作結果，不代表自動化開關目前未開啟。若尚未允許，請至「隱私權與安全性 → 自動化」，在 NookSweep 下允許 Finder，再重新掃描重試。若尚未列出，請重試移除以顯示系統詢問視窗；您可以取消，項目會保留。")
+                                .font(.caption).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button("開啟自動化設定", systemImage: "gearshape") {
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }.font(.caption)
+                        }
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    if report.results.contains(where: { $0.needsPermissionHelp && !$0.finderAutomationDenied }) {
                         let applicationURL = Bundle.main.bundleURL
                         VStack(alignment: .leading, spacing: 8) {
                             Text("上次移除遭系統拒絕")
