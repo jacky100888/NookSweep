@@ -35,7 +35,7 @@ public enum ItemState: Equatable, Sendable {
         switch self {
         case .eligible: nil
         case .recent: "最近仍有使用，暫不清理"
-        case .running: "應用程式執行中，請結束後重新掃描"
+        case .running: "應用程式或背景程序仍在執行，請完整結束後重新掃描"
         case .blocked(let reason): reason
         }
     }
@@ -69,6 +69,15 @@ public struct CleanupItem: Identifiable, Sendable {
         }
     }
     public var isAIHistory: Bool { category == .aiHistory }
+    public var aiDataKind: AIDataKind {
+        if let kind = aiMetadata?.kind { return kind }
+        switch category {
+        case .aiHistory: return .conversation
+        case .aiVersions: return .oldVersion
+        case .aiWorktrees: return .worktree
+        default: return .cache
+        }
+    }
 
     init(url: URL, category: CleanupCategory, bytes: Int64, fileCount: Int, modified: Date,
          state: ItemState, fingerprint: String, aiMetadata: AIItemMetadata? = nil,

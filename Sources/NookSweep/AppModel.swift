@@ -178,6 +178,18 @@ final class AppModel: ObservableObject {
         selected.formUnion(visibleItems.filter(\.isEligible).map(\.id))
     }
 
+    var hiddenSelectionCount: Int {
+        let visibleIDs = Set(visibleItems.map(\.id))
+        return selectedItems.filter { !visibleIDs.contains($0.id) }.count
+    }
+
+    func selectVisibleAIGroup(toolID: String, kind: AIDataKind? = nil) {
+        selected.formUnion(visibleItems.filter {
+            $0.category.isAI && $0.isEligible && ($0.aiToolID ?? "unknown") == toolID &&
+                (kind == nil || $0.aiDataKind == kind)
+        }.map(\.id))
+    }
+
     func sortByDate() {
         sortOrder = [KeyPathComparator(\CleanupItem.modified, order: dateSortOrder == .forward ? .reverse : .forward)]
     }

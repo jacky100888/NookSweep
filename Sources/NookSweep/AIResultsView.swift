@@ -23,6 +23,12 @@ struct AIResultsView: View {
                     .font(.subheadline).monospacedDigit()
                 Text("統計包含目前範圍的全部項目，搜尋與篩選僅影響列表。")
                     .font(.caption).foregroundStyle(.secondary)
+                if inventory.contains(where: { $0.state == .running }) {
+                    let names = Set(inventory.filter { $0.state == .running }.compactMap(\.aiToolName)).sorted()
+                    Label("上次掃描偵測到 \(names.isEmpty ? "AI 工具" : names.joined(separator: "、")) 仍在執行。關閉視窗不等於結束程式；也請結束命令列或編輯器擴充，再重新掃描。", systemImage: "app.badge")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Picker("資料類型", selection: $model.aiCategory) {
                     Text("全部資料").tag(CleanupCategory?.none)
                     Text("快取與暫存").tag(CleanupCategory?.some(.aiCaches))
@@ -62,7 +68,7 @@ struct AIResultsView: View {
                     }
                 }
                 HStack {
-                    Button("全選可整理 · \(selectableCount.formatted()) 項", systemImage: "checklist") {
+                    Button("全選目前範圍 · \(selectableCount.formatted()) 項", systemImage: "checklist") {
                         model.selectVisible()
                     }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
@@ -74,6 +80,12 @@ struct AIResultsView: View {
                     Text("顯示 \(visible.count.formatted()) 項 · 已選 \(model.selectedItems.count.formatted()) 項")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                let hiddenCount = model.hiddenSelectionCount
+                Text(hiddenCount > 0
+                    ? "另有 \(hiddenCount.formatted()) 項已選取但不在目前列表，清理仍會包含這些項目；只清理本類時，請先取消全選。"
+                    : "全選只加入目前篩選範圍；切換分類或搜尋會保留其他已選項目。")
+                    .font(.caption).foregroundStyle(hiddenCount > 0 ? Color.orange : Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 if model.aiCategory == nil || model.aiCategory == .aiWorktrees {
                     Toggle("手動整理工作副本（包含近期、未提交或未合併內容）", isOn: Binding(
                         get: { model.manualWorktreeReview }, set: { model.setManualWorktreeReview($0) }))
@@ -99,20 +111,20 @@ struct AIResultsView: View {
                     ForEach(tools, id: \.self) { tool in
                         Section {
                             ForEach(AIDataKind.allCases, id: \.self) { kind in
-                                let shown = visible.filter { toolID($0) == tool && dataKind($0) == kind }
+                            let shown = visible.filter { toolID($0) == tool && $0.aiDataKind == kind }
                                 if !shown.isEmpty {
                                     DisclosureGroup {
                                         ForEach(shown) { item in itemRow(item).tag(item.id) }
                                     } label: {
                                         groupLabel(kindTitle(kind), items: inventory.filter {
-                                            toolID($0) == tool && dataKind($0) == kind
-                                        }, shown: shown.count)
+                                        toolID($0) == tool && $0.aiDataKind == kind
+                                    }, shown: shown, tool: tool, kind: kind)
                                     }
                                 }
                             }
                         } header: {
                             groupLabel(toolName(tool), items: inventory.filter { toolID($0) == tool },
-                                       shown: visible.filter { toolID($0) == tool }.count)
+                            shown: visible.filter { toolID($0) == tool }, tool: tool)
                         }
                     }
                 }
@@ -151,19 +163,33 @@ struct AIResultsView: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func groupLabel(_ title: String, items: [CleanupItem], shown: Int) -> some View {
+    private func groupLabel(_ title: String, items: [CleanupItem], shown: [CleanupItem],
+                            tool: String, kind: AIDataKind? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(title).fontWeight(.semibold)
                 Spacer(minLength: 8)
-                if shown != items.count {
-                    Text("顯示 \(shown.formatted()) 項").font(.caption).foregroundStyle(.secondary)
+                if shown.count != items.count {
+                    Text("顯示 \(shown.count.formatted()) 項").font(.caption).foregroundStyle(.secondary)
                 }
+                let count = shown.filter(\.isEligible).count
+                Button("全選可整理 · \(count.formatted()) 項") {
+                    model.selectVisibleAIGroup(toolID: tool, kind: kind)
+                }
+                .buttonStyle(.borderless).controlSize(.small)
+                .disabled(count == 0 || model.busy)
+                .accessibilityLabel("全選 \(title) 群組的可整理項目")
+                .help("只加入此群組符合目前搜尋與篩選的可整理項目，其他已選項目會保留")
             }
             Text(summary(items)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
         .padding(.vertical, 3)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+        .accessibilityActions {
+            if shown.contains(where: \.isEligible), !model.busy {
+                Button("全選可整理") { model.selectVisibleAIGroup(toolID: tool, kind: kind) }
+            }
+        }
     }
 
     private func itemRow(_ item: CleanupItem) -> some View {
@@ -234,16 +260,6 @@ struct AIResultsView: View {
 
     private func toolName(_ id: String) -> String {
         inventory.first { toolID($0) == id }?.aiToolName ?? "其他 AI 工具"
-    }
-
-    private func dataKind(_ item: CleanupItem) -> AIDataKind {
-        if let kind = item.aiMetadata?.kind { return kind }
-        switch item.category {
-        case .aiHistory: return .conversation
-        case .aiVersions: return .oldVersion
-        case .aiWorktrees: return .worktree
-        default: return .cache
-        }
     }
 
     private func kindTitle(_ kind: AIDataKind) -> String {
