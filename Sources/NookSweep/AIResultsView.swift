@@ -27,7 +27,6 @@ struct AIResultsView: View {
                     let names = Set(inventory.filter { $0.state == .running }.compactMap(\.aiToolName)).sorted()
                     Label("上次掃描偵測到 \(names.isEmpty ? "AI 工具" : names.joined(separator: "、")) 仍在執行。關閉視窗不等於結束程式；也請結束命令列或編輯器擴充，再重新掃描。", systemImage: "app.badge")
                         .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Picker("資料類型", selection: $model.aiCategory) {
                     Text("全部資料").tag(CleanupCategory?.none)
@@ -85,7 +84,6 @@ struct AIResultsView: View {
                     ? "另有 \(hiddenCount.formatted()) 項已選取但不在目前列表，清理仍會包含這些項目；只清理本類時，請先取消全選。"
                     : "全選只加入目前篩選範圍；切換分類或搜尋會保留其他已選項目。")
                     .font(.caption).foregroundStyle(hiddenCount > 0 ? Color.orange : Color.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
                 if model.aiCategory == nil || model.aiCategory == .aiWorktrees {
                     Toggle("手動整理工作副本（包含近期、未提交或未合併內容）", isOn: Binding(
                         get: { model.manualWorktreeReview }, set: { model.setManualWorktreeReview($0) }))
