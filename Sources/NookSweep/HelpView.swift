@@ -54,7 +54,7 @@ struct HelpView: View {
                     .disabled(updates.isChecking)
                 if updates.isChecking { ProgressView().controlSize(.small) }
             }
-            Text(updates.status).textSelection(.enabled)
+            Text(updates.status)
             if let date = updates.lastCheckedAt {
                 Text("最近檢查：\(date.formatted(date: .abbreviated, time: .shortened))")
                     .font(.caption).foregroundStyle(.secondary)
