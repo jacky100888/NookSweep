@@ -14,9 +14,21 @@ public struct ApplicationActivity: Sendable {
         await MainActor.run {
             let applications = NSWorkspace.shared.runningApplications
             return ApplicationActivity(bundleIDs: Set(applications.compactMap(\.bundleIdentifier)),
-                applicationPaths: Set(applications.compactMap { $0.bundleURL?.standardizedFileURL.path }))
+                applicationPaths: Set(applications.flatMap { application in
+                    [application.bundleURL, application.executableURL].compactMap { $0?.standardizedFileURL.path }
+                }))
         }
     }
+
+    func isRunning(_ app: ApplicationMetadata) -> Bool {
+        bundleIDs.contains(app.bundleID) || applicationPaths.contains {
+            $0 == app.url.path || $0.hasPrefix(app.url.path + "/")
+        }
+    }
+}
+
+public enum ApplicationTerminationMode: Sendable, Equatable {
+    case none, quit, force
 }
 
 public struct ApplicationRecord: Identifiable, Sendable {
@@ -27,6 +39,7 @@ public struct ApplicationRecord: Identifiable, Sendable {
     public let version: String
     public let bytes: Int64
     public let fileCount: Int
+    public let isRunning: Bool
     public let blockedReason: String?
     public var isRemovable: Bool { blockedReason == nil }
     let fingerprint: String
@@ -78,6 +91,7 @@ public actor ApplicationsEngine {
     let ownBundleID: String?
     let ownApplicationURL: URL?
     let activity: @Sendable () async -> ApplicationActivity
+    let terminateOperation: @Sendable (URL, ApplicationTerminationMode) async throws -> Void
     let trashOperation: @Sendable (URL) throws -> URL
 
     public init(applicationRoots: [URL]? = nil,
@@ -85,6 +99,7 @@ public actor ApplicationsEngine {
                 ownBundleID: String? = Bundle.main.bundleIdentifier,
                 ownApplicationURL: URL? = Bundle.main.bundleURL,
                 activity: @escaping @Sendable () async -> ApplicationActivity = { await .current() },
+                terminateOperation: (@Sendable (URL, ApplicationTerminationMode) async throws -> Void)? = nil,
                 trashOperation: (@Sendable (URL) throws -> URL)? = nil) {
         self.home = home.standardizedFileURL
         self.applicationRoots = (applicationRoots ?? [URL(fileURLWithPath: "/Applications"),
@@ -92,6 +107,7 @@ public actor ApplicationsEngine {
         self.ownBundleID = ownBundleID
         self.ownApplicationURL = ownApplicationURL?.standardizedFileURL
         self.activity = activity
+        self.terminateOperation = terminateOperation ?? { try await terminateApplication($0, mode: $1) }
         self.trashOperation = trashOperation ?? { url in
             var destination: NSURL?
             try FileManager.default.trashItem(at: url, resultingItemURL: &destination)

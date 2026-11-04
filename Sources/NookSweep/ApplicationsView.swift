@@ -56,12 +56,19 @@ struct ApplicationsView: View {
         .onChange(of: model.selectedID) { _, _ in model.inspectSelection() }
         .confirmationDialog("將「\(model.selectedApplication?.name ?? "App")」移到垃圾桶？",
             isPresented: $model.showConfirmation, titleVisibility: .visible) {
-            Button("移到垃圾桶", role: .destructive) { model.removeSelected() }
+            if model.selectedApplication?.isRunning == true {
+                Button("結束並移到垃圾桶", role: .destructive) { model.removeSelected(terminationMode: .quit) }
+                Button("強制結束並移到垃圾桶", role: .destructive) { model.removeSelected(terminationMode: .force) }
+            } else {
+                Button("移到垃圾桶", role: .destructive) { model.removeSelected() }
+            }
             Button("取消", role: .cancel) { }
         } message: {
-            Text(model.selectedRelatedItems.isEmpty
+            Text((model.selectedRelatedItems.isEmpty
                 ? "只會移除 App。相關資料會保留，您可從垃圾桶放回 App。"
-                : "同時移除您勾選的 \(model.selectedRelatedItems.count) 項相關資料，可能包含設定、登入狀態與使用者內容。取回時需從垃圾桶放回原路徑。")
+                 : "同時移除您勾選的 \(model.selectedRelatedItems.count) 項相關資料，可能包含設定、登入狀態與使用者內容。取回時需從垃圾桶放回原路徑。") +
+                 (model.selectedApplication?.isRunning == true
+                    ? "\n\n會先結束 App，確認停止後再移除。強制結束會遺失未儲存的內容；無法停止時會保留 App 與相關資料。" : ""))
         }
     }
 
@@ -84,6 +91,8 @@ struct ApplicationsView: View {
                                 Text(app.bundleID).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                 if let reason = app.blockedReason {
                                     Text(reason).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            } else if app.isRunning {
+                                Text("執行中 · 可結束後移除").font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                             Spacer(minLength: 4)

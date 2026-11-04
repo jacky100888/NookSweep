@@ -58,7 +58,9 @@ struct ApplicationFixture {
     try fixture.app("Apple", id: "com.apple.TextEdit")
     let result = try await fixture.engine(ownID: "org.nooksweep.app", running: ["org.example.running"]).scan()
     #expect(result.applications.count == 2)
-    #expect(result.applications.allSatisfy { !$0.isRemovable })
+    #expect(result.applications.first { $0.name == "Own" }?.isRemovable == false)
+    #expect(result.applications.first { $0.name == "Running" }?.isRemovable == true)
+    #expect(result.applications.first { $0.name == "Running" }?.isRunning == true)
     #expect(result.applications.allSatisfy { $0.bytes > 0 && $0.version == "1.2.3" })
 }
 
@@ -134,7 +136,7 @@ struct ApplicationFixture {
     #expect(linked.results.allSatisfy { !$0.succeeded })
     let forged = ApplicationRecord(url: moved, name: app.name, bundleID: app.bundleID,
         version: app.version, bytes: app.bytes, fileCount: app.fileCount,
-        blockedReason: nil, fingerprint: app.fingerprint)
+        isRunning: false, blockedReason: nil, fingerprint: app.fingerprint)
     let outside = await engine.trash(forged, relatedItems: [])
     #expect(outside.results.allSatisfy { !$0.succeeded })
     #expect(FileManager.default.fileExists(atPath: moved.path))

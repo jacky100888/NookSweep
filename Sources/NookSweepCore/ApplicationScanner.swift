@@ -11,7 +11,8 @@ extension ApplicationsEngine {
         let previews = inventory.applications.map { metadata in
             ApplicationRecord(url: metadata.url, name: metadata.name, bundleID: metadata.bundleID,
                 version: metadata.version, bytes: 0, fileCount: 0,
-                blockedReason: protectionReason(metadata, running: running) ?? "正在量測大小，請稍候",
+                isRunning: running.isRunning(metadata),
+                blockedReason: protectionReason(metadata, running: running, allowRunning: true) ?? "正在量測大小，請稍候",
                 fingerprint: "")
         }
         progress(previews, "正在量測應用程式大小…")
@@ -21,7 +22,8 @@ extension ApplicationsEngine {
                 let size = try applicationMeasure(metadata.url)
                 applications.append(ApplicationRecord(url: metadata.url, name: metadata.name,
                     bundleID: metadata.bundleID, version: metadata.version, bytes: size.bytes,
-                    fileCount: size.fileCount, blockedReason: protectionReason(metadata, running: running),
+                    fileCount: size.fileCount, isRunning: running.isRunning(metadata),
+                    blockedReason: protectionReason(metadata, running: running, allowRunning: true),
                     fingerprint: size.fingerprint))
             } catch is CancellationError { throw CancellationError() }
             catch { warnings.append("\(metadata.url.path)：\(error.localizedDescription)") }
@@ -109,24 +111,25 @@ extension ApplicationsEngine {
                                    bundleID: bundleID, version: version)
     }
 
-    func protectionReason(_ app: ApplicationMetadata, running: ApplicationActivity) -> String? {
+    func protectionReason(_ app: ApplicationMetadata, running: ApplicationActivity,
+                          allowRunning: Bool = false) -> String? {
         if app.bundleID.lowercased().hasPrefix("com.apple.") { return "Apple 系統應用程式受保護" }
         if app.bundleID == ownBundleID || app.url.path == ownApplicationURL?.path {
             return "NookSweep 無法移除自身"
         }
-        if running.bundleIDs.contains(app.bundleID) || running.applicationPaths.contains(app.url.path) {
-            return "應用程式執行中，請自行結束後重新掃描"
+        if !allowRunning && running.isRunning(app) {
+            return "應用程式仍在執行中，請重新掃描後選擇結束或強制結束並移除"
         }
         return nil
     }
 
-    func validateRecord(_ app: ApplicationRecord) async throws -> ApplicationMetadata {
+    func validateRecord(_ app: ApplicationRecord, allowRunning: Bool = false) async throws -> ApplicationMetadata {
         try validateApplicationPath(app.url)
         let metadata = try readMetadata(app.url)
         guard metadata.bundleID == app.bundleID else {
             throw CleanupError.refused("App 的 bundle ID 已改變，請重新掃描")
         }
-        if let reason = protectionReason(metadata, running: await activity()) {
+        if let reason = protectionReason(metadata, running: await activity(), allowRunning: allowRunning) {
             throw CleanupError.refused(reason)
         }
         guard try applicationMeasure(app.url).fingerprint == app.fingerprint else {

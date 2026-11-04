@@ -26,6 +26,9 @@ struct ApplicationsDetailView: View {
                     Button("在 Finder 顯示 App", systemImage: "folder") { model.reveal(app.url) }
                     if let reason = app.blockedReason {
                         Label(reason, systemImage: "lock.shield").font(.callout)
+                    } else if app.isRunning {
+                        Label("執行中，可在確認視窗選擇結束或強制結束後移除", systemImage: "app.badge")
+                            .font(.callout)
                     }
                     Divider()
                     Text("相關資料（選填）").font(.headline)
@@ -50,10 +53,10 @@ struct ApplicationsDetailView: View {
                     if model.isRemoving {
                         HStack {
                             ProgressView().controlSize(.small)
-                            Text("正在逐項移到垃圾桶…").font(.caption)
+                            Text("正在結束 App、重新驗證並移到垃圾桶…").font(.caption)
                         }
                     }
-                    Text("執行中的 App 需先自行結束。權限不足時會提供 Finder 處理與 App 管理設定指引；垃圾桶可供復原。")
+                    Text("執行中的 App 可選擇結束或強制結束後移除；強制結束會遺失未儲存內容。權限不足時會提供 Finder 與 App 管理設定指引；垃圾桶可供復原。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(24).frame(maxWidth: .infinity, alignment: .leading)

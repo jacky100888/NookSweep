@@ -3,7 +3,8 @@ import Foundation
 
 extension ApplicationsEngine {
     public func trash(_ app: ApplicationRecord,
-                      relatedItems: [ApplicationRelatedItem] = []) async -> ApplicationRemovalReport {
+                      relatedItems: [ApplicationRelatedItem] = [],
+                      terminationMode: ApplicationTerminationMode = .none) async -> ApplicationRemovalReport {
         var results: [ApplicationRemovalResult] = []
         var seen = Set<String>()
         let selected = relatedItems.filter { seen.insert($0.id).inserted }
@@ -11,6 +12,11 @@ extension ApplicationsEngine {
         do {
             try Task.checkCancellation()
             guard app.isRemovable else { throw CleanupError.refused(app.blockedReason ?? "請重新掃描") }
+            if terminationMode != .none {
+                _ = try await validateRecord(app, allowRunning: true)
+                try await terminateOperation(app.url, terminationMode)
+                try Task.checkCancellation()
+            }
             metadata = try await validateRecord(app)
             if let reason = protectionReason(metadata, running: await activity()) {
                 throw CleanupError.refused(reason)

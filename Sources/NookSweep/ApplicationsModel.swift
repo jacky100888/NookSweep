@@ -102,16 +102,17 @@ final class ApplicationsModel: ObservableObject {
         }
     }
 
-    func removeSelected() {
+    func removeSelected(terminationMode: ApplicationTerminationMode = .none) {
         showConfirmation = false
         guard canRemove, let app = selectedApplication else { return }
         let selected = selectedRelatedItems
         isRemoving = true
         errorMessage = nil
         report = nil
+        status = terminationMode == .none ? "正在重新驗證並移到垃圾桶…" : "正在結束 App，完成後重新驗證並移到垃圾桶…"
         operation = Task { [weak self] in
             guard let self else { return }
-            let result = await engine.trash(app, relatedItems: selected)
+            let result = await engine.trash(app, relatedItems: selected, terminationMode: terminationMode)
             report = result
             if result.results.contains(where: { $0.originalURL == app.url && $0.succeeded }) {
                 applications.removeAll { $0.id == app.id }
