@@ -6,6 +6,7 @@ struct MenuBarStatusView: View {
     @ObservedObject var model: StatusModel
     @ObservedObject var updates: AppUpdateModel
     @ObservedObject var help: HelpModel
+    @ObservedObject var loginItem: LoginItemModel
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -57,6 +58,20 @@ struct MenuBarStatusView: View {
             Text(model.isPaused ? "監測已暫停" : "每 2 秒更新 · 監測資料留在本機")
                 .font(.caption2).foregroundStyle(.secondary)
             UpdateNoticeView(model: updates)
+            Divider()
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("登入時啟動", isOn: Binding(
+                    get: { loginItem.isRegistered }, set: { loginItem.setEnabled($0) }
+                ))
+                .toggleStyle(.checkbox)
+                Text(loginItem.statusText).font(.caption).foregroundStyle(.secondary)
+                if let error = loginItem.lastError {
+                    Text(error).font(.caption).foregroundStyle(.orange).textSelection(.enabled)
+                }
+                if loginItem.needsApproval || loginItem.lastError != nil {
+                    Button("開啟登入項目設定", action: loginItem.openSystemSettings).font(.caption)
+                }
+            }
             HStack {
                 Button("使用說明") {
                     openWindow(id: "help")
@@ -77,9 +92,13 @@ struct MenuBarStatusView: View {
             Button("結束 NookSweep") { NSApplication.shared.terminate(nil) }
                 .font(.caption).frame(maxWidth: .infinity)
         }.padding(20).frame(width: 330)
-            .task { updates.checkForUpdates(automatic: true) }
+        .task {
+            updates.checkForUpdates(automatic: true)
+            loginItem.refresh()
+        }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                 updates.checkForUpdates(automatic: true)
+            loginItem.refresh()
             }
     }
 

@@ -6,6 +6,7 @@ struct NookSweepApp: App {
     @StateObject private var monitor = StatusModel()
     @StateObject private var updates = AppUpdateModel()
     @StateObject private var help = HelpModel()
+    @StateObject private var loginItem = LoginItemModel()
     @Environment(\.openWindow) private var openWindow
     var body: some Scene {
         WindowGroup("NookSweep", id: "main") {
@@ -34,8 +35,10 @@ struct NookSweepApp: App {
             HelpView(model: help, updates: updates)
         }
         .defaultSize(width: 860, height: 680)
-        MenuBarExtra("NookSweep", systemImage: "waveform.path.ecg") {
-            MenuBarStatusView(model: monitor, updates: updates, help: help)
+        MenuBarExtra {
+            MenuBarStatusView(model: monitor, updates: updates, help: help, loginItem: loginItem)
+        } label: {
+            Image(nsImage: AppIcon.menuBarImage).accessibilityLabel("NookSweep")
         }
         .menuBarExtraStyle(.window)
     }
